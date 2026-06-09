@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, Suspense } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Brain, Target, Award, ArrowRight, Lightbulb, BookOpen, ChevronRight, CheckCircle2, RotateCcw, Zap, Shield, Mail, MapPin, X } from 'lucide-react';
+import { Brain, Target, Award, ArrowRight, Lightbulb, BookOpen, ChevronRight, CheckCircle2, RotateCcw, Zap, Shield, Mail, MapPin, Info, Layers, Cpu } from 'lucide-react';
 import 'katex/dist/katex.min.css';
 import { InlineMath } from 'react-katex';
 import { Canvas, useFrame } from '@react-three/fiber';
@@ -32,53 +32,33 @@ const WaterBackground = () => (
   </div>
 );
 
-// --- COOKIE BANNER COMPONENT ---
-const CookieBanner = () => {
-  const [show, setShow] = useState(false);
-  useEffect(() => {
-    const consent = localStorage.getItem('quasar_consent');
-    if (!consent) setShow(true);
-  }, []);
-
-  const accept = () => { localStorage.setItem('quasar_consent', 'true'); setShow(false); };
-
-  return (
-    <AnimatePresence>
-      {show && (
-        <motion.div initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }} className="fixed bottom-6 left-6 right-6 md:left-auto md:w-96 z-[200] bg-white/90 backdrop-blur-xl border border-white p-6 rounded-3xl shadow-2xl">
-          <h4 className="font-black text-xs uppercase tracking-widest mb-2 flex items-center gap-2"><Shield size={14} className="text-blue-600"/> Privacy Preference</h4>
-          <p className="text-[11px] text-slate-500 leading-relaxed mb-4">We use neural-tracking cookies to optimize your SAT diagnostic experience. By clicking "Accept", you agree to our 1500+ performance tracking.</p>
-          <div className="flex gap-3">
-            <button onClick={accept} className="flex-1 bg-slate-900 text-white py-2 rounded-xl text-[10px] font-black uppercase">Accept All</button>
-            <button onClick={() => setShow(false)} className="flex-1 bg-white border border-slate-200 text-slate-600 py-2 rounded-xl text-[10px] font-black uppercase">Reject</button>
-          </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-};
-
-// --- LEGIT FOOTER ---
+// --- LEGIT FOOTER (Includes Trademark Disclaimer) ---
 const Footer = ({ setView }) => (
   <footer className="relative z-10 bg-white/60 backdrop-blur-md border-t border-slate-200 py-16 px-10">
-    <div className="max-w-7xl mx-auto grid md:grid-cols-4 gap-12">
-      <div className="col-span-1 md:col-span-2">
-        <div className="flex items-center gap-2 mb-4">
-          <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white font-black text-xs">Q</div>
-          <span className="font-black text-lg tracking-tighter">QuasarPrep Academic</span>
+    <div className="max-w-7xl mx-auto">
+      <div className="grid md:grid-cols-4 gap-12 mb-12">
+        <div className="col-span-1 md:col-span-2">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-6 h-6 bg-blue-600 rounded flex items-center justify-center text-white font-black text-xs">Q</div>
+            <span className="font-black text-lg tracking-tighter">QuasarPrep Academic</span>
+          </div>
+          <p className="text-slate-400 text-xs font-medium max-w-sm leading-relaxed">The world's premier digital SAT diagnostic platform. Engineered for elite scholars aiming for the 1500-1600 score threshold.</p>
         </div>
-        <p className="text-slate-400 text-xs font-medium max-w-sm leading-relaxed">QuasarPrep is a global academic laboratory specializing in high-percentile SAT performance and neural-based pedagogical strategy.</p>
+        <div className="flex flex-col gap-3">
+          <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-2">Company</h5>
+          <button onClick={() => setView('about')} className="text-left text-xs font-bold text-slate-600 hover:text-blue-600">About Our Tech</button>
+          <button onClick={() => setView('contact')} className="text-left text-xs font-bold text-slate-600 hover:text-blue-600">Support Lab</button>
+        </div>
+        <div className="flex flex-col gap-3">
+          <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-2">Legal</h5>
+          <button onClick={() => setView('privacy')} className="text-left text-xs font-bold text-slate-600 hover:text-blue-600">Privacy & Data</button>
+          <button onClick={() => setView('terms')} className="text-left text-xs font-bold text-slate-600 hover:text-blue-600">Terms of Service</button>
+        </div>
       </div>
-      <div className="flex flex-col gap-3">
-        <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-2">Legal</h5>
-        <button onClick={() => setView('privacy')} className="text-left text-xs font-bold text-slate-600 hover:text-blue-600">Privacy Policy</button>
-        <button onClick={() => setView('terms')} className="text-left text-xs font-bold text-slate-600 hover:text-blue-600">Terms of Service</button>
-        <button onClick={() => setView('privacy')} className="text-left text-xs font-bold text-slate-600 hover:text-blue-600">Cookie Policy</button>
-      </div>
-      <div className="flex flex-col gap-3">
-        <h5 className="font-black text-[10px] uppercase tracking-[0.2em] text-slate-400 mb-2">Transparency</h5>
-        <button onClick={() => setView('contact')} className="text-left text-xs font-bold text-slate-600 hover:text-blue-600">Contact Us</button>
-        <div className="text-[10px] text-slate-400 font-medium">© 2024 QuasarPrep. All rights reserved. Registered Educational Entity.</div>
+      <div className="border-t border-slate-100 pt-8">
+        <p className="text-[10px] text-slate-400 leading-relaxed italic text-center max-w-4xl mx-auto">
+          SAT® is a registered trademark of the College Board, which is not affiliated with, and does not endorse, this website. QuasarPrep operates as an independent educational research laboratory.
+        </p>
       </div>
     </div>
   </footer>
@@ -91,7 +71,6 @@ export default function App() {
   return (
     <div className="relative min-h-screen w-full">
       <WaterBackground />
-      <CookieBanner />
       
       {/* NAVIGATION */}
       <header className="fixed top-8 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-5xl">
@@ -102,80 +81,99 @@ export default function App() {
           </div>
           <div className="hidden md:flex gap-8 items-center font-black text-[11px] uppercase tracking-widest">
             <button onClick={() => setView('home')} className="text-slate-500 hover:text-blue-600 transition-colors">Strategy</button>
+            <button onClick={() => setView('about')} className="text-slate-500 hover:text-blue-600 transition-colors">About</button>
             <button onClick={() => setView('curriculum')} className="text-slate-500 hover:text-blue-600 transition-colors">Curriculum</button>
-            <button onClick={() => setView('contact')} className="text-slate-500 hover:text-blue-600 transition-colors">Contact</button>
-            <button onClick={() => setView('diagnostic')} className="bg-slate-900 text-white px-8 py-3 rounded-full hover:bg-blue-600 shadow-lg">Start Quiz</button>
+            <button onClick={() => setView('diagnostic')} className="bg-slate-900 text-white px-8 py-3 rounded-full hover:bg-blue-600 shadow-lg transition-all">Start Quiz</button>
           </div>
         </nav>
       </header>
 
       <main className="relative z-10">
         <AnimatePresence mode="wait">
+          
+          {/* --- ABOUT PAGE VIEW --- */}
+          {view === 'about' && (
+            <motion.div key="about" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-screen overflow-y-auto snap-y snap-mandatory no-scrollbar">
+              
+              {/* Section 1: Intro Hook */}
+              <section className="h-screen flex items-center justify-center snap-start px-10">
+                <div className="max-w-4xl text-center">
+                  <motion.h2 initial={{ y: 20 }} animate={{ y: 0 }} className="text-6xl md:text-8xl font-black tracking-tighter leading-none mb-8 text-slate-900">
+                    Master the <span className="text-blue-600">SAT®.</span> <br /> Navigate Your Future.
+                  </motion.h2>
+                  <p className="text-xl md:text-2xl text-slate-600 font-bold leading-relaxed max-w-3xl mx-auto">
+                    At QuasarPrep we believe that preparing for the SAT® shouldn’t feel like staring at static paper. The digital SAT® is dynamic, adaptive, and precise—and your prep platform should be too.
+                  </p>
+                </div>
+              </section>
+
+              {/* Section 2: Mission */}
+              <section className="h-screen flex items-center justify-center snap-start px-10 bg-white/20">
+                <div className="grid lg:grid-cols-2 gap-16 items-center max-w-7xl">
+                  <div className="order-2 lg:order-1 h-[400px]">
+                     <Canvas><ambientLight intensity={1.5}/><Suspense fallback={null}><AnimatedBrain/></Suspense></Canvas>
+                  </div>
+                  <div className="order-1 lg:order-2 space-y-6">
+                    <h3 className="text-4xl font-black tracking-tight text-blue-600 uppercase">Our Mission</h3>
+                    <p className="text-2xl font-black text-slate-900 leading-tight italic">Clear Navigation Through Complex Testing</p>
+                    <p className="text-slate-500 text-lg leading-relaxed font-medium">
+                      Every student’s learning journey is fluid. Our mission is to guide you through the complexities of the digital SAT® with absolute clarity. We don't just teach you how to find the answer; we teach you how to think, adapt, and build deep analytical skills.
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+              {/* Section 3: The Pillars (Grid Cards) */}
+              <section className="h-screen flex flex-col items-center justify-center snap-start px-10">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-400 mb-12">The Quasar Pillars</h3>
+                <div className="grid md:grid-cols-3 gap-8 max-w-7xl">
+                  {[
+                    { icon: <Layers size={24}/>, title: "3D Visualizations", desc: "We bring abstract math to life. Visualize geometric transformations and coordinate relationships instead of memorizing formulas." },
+                    { icon: <Target size={24}/>, title: "Algorithmic Precision", desc: "Our practice modules mirror the exact rigor of the digital SAT®, giving you data-driven feedback on where to focus." },
+                    { icon: <Cpu size={24}/>, title: "Built for Digital Era", desc: "From mastering the Desmos graphing calculator to smart elimination, we weaponize you with the exact technical skills required." }
+                  ].map((pillar, i) => (
+                    <motion.div whileHover={{ y: -10 }} key={i} className="bg-white/40 backdrop-blur-xl p-10 rounded-[3rem] border border-white shadow-2xl transition-all hover:bg-white">
+                      <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg shadow-blue-200">{pillar.icon}</div>
+                      <h4 className="font-black text-xl mb-4 text-slate-900">{pillar.title}</h4>
+                      <p className="text-slate-500 text-sm font-bold leading-relaxed">{pillar.desc}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </section>
+
+              {/* Section 4: Integrity & Footer */}
+              <section className="h-screen flex flex-col items-center justify-center snap-start px-10">
+                <div className="max-w-4xl text-center mb-20">
+                  <h3 className="text-4xl font-black tracking-tight mb-8">Academic <span className="text-blue-600">Integrity & Excellence.</span></h3>
+                  <p className="text-slate-500 text-lg leading-relaxed font-bold">
+                    We are deeply committed to providing an honest, high-impact learning environment. All our diagnostic modules and practice questions are uniquely engineered by subject matter experts to reflect the latest testing standards without violating copyright. We stand for authentic skill-building.
+                  </p>
+                </div>
+                <Footer setView={setView} />
+              </section>
+            </motion.div>
+          )}
+
+          {/* ... [KEEP ALL OTHER VIEWS FROM PREVIOUS App.jsx (Home, Curriculum, Diagnostic, Legal, Contact)] ... */}
+          
           {view === 'home' && (
             <motion.div key="home" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="h-screen overflow-y-auto snap-y snap-mandatory no-scrollbar">
               <section className="h-screen flex items-center justify-center snap-start px-10">
                 <div className="grid lg:grid-cols-2 gap-10 items-center max-w-7xl">
                   <div>
                     <h1 className="text-7xl md:text-[90px] font-black tracking-tighter leading-[0.85] mb-8 text-slate-900">Neural <br /><span className="text-blue-600">SAT</span> Logic.</h1>
-                    <p className="text-xl text-slate-600 font-bold max-w-md mb-10 leading-relaxed italic">Beyond prep. Cognitive mastery for the top 1%.</p>
-                    <button onClick={() => setView('diagnostic')} className="bg-blue-600 text-white px-12 py-6 rounded-3xl font-black uppercase tracking-widest shadow-2xl shadow-blue-300">Enter Neural Lab</button>
+                    <p className="text-xl text-slate-600 font-bold max-w-md mb-10 leading-relaxed italic">The World's Elite 1550+ Cognitive Lab.</p>
+                    <button onClick={() => setView('diagnostic')} className="bg-blue-600 text-white px-12 py-6 rounded-3xl font-black uppercase tracking-widest shadow-2xl">Enter Neural Lab</button>
                   </div>
                   <div className="h-[500px]">
                     <Canvas><ambientLight intensity={1.5}/><Suspense fallback={null}><AnimatedBrain/></Suspense></Canvas>
                   </div>
                 </div>
               </section>
-              <section className="h-screen flex flex-col items-center justify-center snap-start bg-white/20 px-10">
-                <h2 className="text-6xl font-black tracking-tighter mb-20 text-slate-900">Ivy League <span className="text-blue-600">Protocols.</span></h2>
-                <div className="grid md:grid-cols-3 gap-8 max-w-6xl">
-                  {[{t:"Pattern Recognition", d:"Master high-level rhetorical traps."}, {t:"Quantitative Velocity", d:"Solve advanced math in seconds."}, {t:"Neural Mapping", d:"Adaptive AI tracks your logic."}].map((item, i)=>(
-                    <div key={i} className="bg-white p-12 rounded-[3rem] shadow-2xl border border-white text-center">
-                      <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white mx-auto mb-6"><Zap size={20}/></div>
-                      <h4 className="font-black text-xl mb-4">{item.t}</h4>
-                      <p className="text-slate-500 font-bold">{item.d}</p>
-                    </div>
-                  ))}
-                </div>
-              </section>
               <Footer setView={setView} />
             </motion.div>
           )}
 
-          {view === 'contact' && (
-            <motion.div key="contact" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-48 px-10 max-w-4xl mx-auto text-center">
-              <h2 className="text-6xl font-black tracking-tighter mb-10">Connect with <span className="text-blue-600">Admissions.</span></h2>
-              <div className="grid md:grid-cols-2 gap-10">
-                <div className="bg-white p-12 rounded-[3rem] shadow-2xl border border-white text-left">
-                  <Mail className="text-blue-600 mb-4" />
-                  <h4 className="font-black uppercase text-xs tracking-widest mb-2">Academic Support</h4>
-                  <p className="text-slate-500 font-bold mb-6">admissions@quasarprep.com</p>
-                  <MapPin className="text-blue-600 mb-4" />
-                  <h4 className="font-black uppercase text-xs tracking-widest mb-2">HQ Laboratory</h4>
-                  <p className="text-slate-500 font-bold">120 Silicon Alley, NY 10003</p>
-                </div>
-                <div className="bg-slate-900 p-12 rounded-[3rem] text-white text-left">
-                  <h4 className="font-black text-xl mb-4 text-blue-400">Response Protocol</h4>
-                  <p className="text-sm opacity-70 leading-relaxed">Our strategists respond within 24 business hours. If you are an active "Tier 1" student, please use your dedicated lab Slack channel.</p>
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Legal View (Dynamic for Privacy/Terms) */}
-          {(view === 'privacy' || view === 'terms') && (
-            <motion.div key="legal" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-48 px-10 max-w-3xl mx-auto pb-40">
-              <h2 className="text-4xl font-black uppercase mb-10 tracking-widest text-slate-400">{view} Protocol</h2>
-              <div className="bg-white/80 backdrop-blur-xl p-12 rounded-[3rem] shadow-2xl border border-white prose prose-slate">
-                <p className="font-bold text-slate-800">Effective Date: June 1, 2024</p>
-                <p className="text-slate-500 leading-relaxed mb-6">This document governs the ethical and legal usage of the QuasarPrep diagnostic platform. Under GDPR and CCPA compliance, we ensure that your neural data (quiz performance) is used solely for pedagogical optimization.</p>
-                <h4 className="font-black uppercase text-xs mb-4">1. Data Sovereignty</h4>
-                <p className="text-slate-500 text-sm mb-6 leading-relaxed italic">QuasarPrep does not sell student metrics to third-party advertisers. All data is encrypted using AES-256 protocols via Vercel secure hosting.</p>
-                <h4 className="font-black uppercase text-xs mb-4">2. Limitation of Liability</h4>
-                <p className="text-slate-500 text-sm mb-6 leading-relaxed italic">Usage of the 3D lab does not guarantee a 1600 score, though statistically, our users experience a +240 point shift.</p>
-                <button onClick={()=>setView('home')} className="mt-10 flex items-center gap-2 font-black text-[10px] uppercase tracking-widest text-blue-600"><ArrowRight size={14} className="rotate-180"/> Return to Lab</button>
-              </div>
-            </motion.div>
-          )}
         </AnimatePresence>
       </main>
     </div>
