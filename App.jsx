@@ -3,8 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Brain, Target, Award, ArrowRight, Lightbulb, BookOpen, 
   ChevronRight, CheckCircle2, RotateCcw, Zap, Shield, 
-  Mail, MapPin, Layers, Cpu, Info, Search 
+  Mail, MapPin, Layers, Cpu, Info, Search, MessageCircle, Phone
 } from 'lucide-react';
+
+// EXTERNAL COMPONENT
+import Pricing from './Pricing'; 
 
 // MATH & 3D RENDERING
 import 'katex/dist/katex.min.css';
@@ -151,7 +154,7 @@ const DiagnosticQuiz = ({ onFinish }) => {
   );
 };
 
-// --- 5. MAIN APPLICATION (The Controller) ---
+// --- 5. MAIN APPLICATION ---
 export default function App() {
   const [view, setView] = useState('home');
   const [finalScore, setFinalScore] = useState(null);
@@ -166,18 +169,28 @@ export default function App() {
     <div className="relative min-h-screen w-full font-sans text-slate-900">
       <WaterBackground />
       
+      {/* WHATSAPP WIDGET */}
+      <motion.a 
+        href="https://wa.me/917061014213" target="_blank"
+        initial={{ scale: 0 }} animate={{ scale: 1 }} whileHover={{ scale: 1.1 }}
+        className="fixed bottom-8 left-8 z-[200] bg-[#25D366] text-white p-4 rounded-full shadow-2xl flex items-center justify-center"
+      >
+        <MessageCircle size={32} fill="white" />
+      </motion.a>
+
       {/* NAVIGATIONBAR */}
       <header className="fixed top-8 left-1/2 -translate-x-1/2 z-[150] w-[90%] max-w-5xl">
         <nav className="bg-white/40 backdrop-blur-3xl border border-white/50 shadow-2xl rounded-full h-20 flex items-center justify-between px-10">
-          <div onClick={() => setView('home')} className="flex items-center gap-3 cursor-pointer group">
+          <div onClick={() => {setView('home'); setFinalScore(null);}} className="flex items-center gap-3 cursor-pointer group">
             <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center text-white font-black shadow-xl group-hover:rotate-12 transition-transform">Q</div>
             <span className="font-black tracking-tighter text-2xl">QuasarPrep</span>
           </div>
           <div className="hidden md:flex gap-10 items-center">
-            <button onClick={() => setView('home')} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600">Strategy</button>
-            <button onClick={() => setView('about')} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600">About</button>
-            <button onClick={() => setView('curriculum')} className="text-[11px] font-black uppercase tracking-widest text-slate-500 hover:text-blue-600">Curriculum</button>
-            <MagneticButton onClick={() => setView('diagnostic')} className="bg-slate-900 text-white px-8 py-3 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-blue-600">Diagnostic</MagneticButton>
+            <button onClick={() => setView('home')} className={`text-[11px] font-black uppercase tracking-widest transition-colors ${view === 'home' ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}>Strategy</button>
+            <button onClick={() => setView('about')} className={`text-[11px] font-black uppercase tracking-widest transition-colors ${view === 'about' ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}>About</button>
+            <button onClick={() => setView('curriculum')} className={`text-[11px] font-black uppercase tracking-widest transition-colors ${view === 'curriculum' ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}>Curriculum</button>
+            <button onClick={() => setView('pricing')} className={`text-[11px] font-black uppercase tracking-widest transition-colors ${view === 'pricing' ? 'text-blue-600' : 'text-slate-500 hover:text-blue-600'}`}>Pricing</button>
+            <MagneticButton onClick={() => {setView('diagnostic'); setFinalScore(null);}} className="bg-slate-900 text-white px-8 py-3 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-blue-600 transition-all">Diagnostic</MagneticButton>
           </div>
         </nav>
       </header>
@@ -206,11 +219,9 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* VIEW: ABOUT (As Requested) */}
+          {/* VIEW: ABOUT */}
           {view === 'about' && (
             <motion.div key="about" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="h-screen overflow-y-auto snap-y snap-mandatory no-scrollbar">
-              
-              {/* Headline & Intro */}
               <Section>
                 <div className="max-w-4xl text-center">
                   <h2 className="text-6xl md:text-8xl font-black tracking-tighter leading-none mb-10 text-slate-900">
@@ -222,14 +233,13 @@ export default function App() {
                 </div>
               </Section>
 
-              {/* Section 1: Mission */}
               <Section className="bg-white/20 backdrop-blur-xl">
                 <div className="grid lg:grid-cols-2 gap-20 items-center max-w-7xl">
-                  <motion.div initial={{ x: -100, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1 }} className="space-y-6">
-                    <h3 className="text-blue-600 font-black uppercase text-xs tracking-widest">Section 1: Our Mission</h3>
+                  <motion.div initial={{ x: -100, opacity: 0 }} whileInView={{ x: 0, opacity: 1 }} transition={{ duration: 1 }} className="space-y-6 text-left">
+                    <h3 className="text-blue-600 font-black uppercase text-xs tracking-widest">Our Mission</h3>
                     <h4 className="text-5xl font-black text-slate-900 leading-tight">Clear Navigation Through Complex Testing</h4>
                     <p className="text-slate-500 text-lg font-medium leading-relaxed italic">
-                      Every student’s learning journey is fluid. Our mission is to guide you through the complexities of the digital SAT® with absolute clarity. We don't just teach you how to find the answer; we teach you how to think, adapt, and build the deep analytical skills required for a top-tier score.
+                      Every student’s learning journey is fluid. Our mission is to guide you through the complexities of the digital SAT® with absolute clarity. We don't just teach you how to find the answer; we teach you how to think and adapt.
                     </p>
                   </motion.div>
                   <div className="h-[500px]">
@@ -237,36 +247,23 @@ export default function App() {
                   </div>
                 </div>
               </Section>
-
-              {/* Section 2: Pillars */}
+              
               <Section>
                 <div className="max-w-7xl w-full">
-                  <h3 className="text-center font-black text-xs uppercase tracking-[0.4em] text-slate-400 mb-16">Section 2: The Core Pillars</h3>
+                  <h3 className="text-center font-black text-xs uppercase tracking-[0.4em] text-slate-400 mb-16">The Core Pillars</h3>
                   <div className="grid md:grid-cols-3 gap-8">
                     {[
-                      { title: "Adaptive 3D Visualizations", desc: "We bring abstract math and data analysis to life. Our unique interface helps you visualize complex geometric transformations and algebraic relationships." },
-                      { title: "True Algorithmic Precision", desc: "Our mock testing environments and targeted modules are built to mirror the exact structure of the adaptive digital SAT®." },
-                      { title: "Built for the Digital Era", desc: "From mastering the native Desmos graphing calculator to utilizing smart elimination, we weaponize you with exact technical skills." }
+                      { title: "Adaptive 3D Visualizations", desc: "We bring abstract math and data analysis to life through unique interactive models." },
+                      { title: "True Algorithmic Precision", desc: "Our mock testing environments mirror the exact structure of the adaptive digital SAT®." },
+                      { title: "Built for the Digital Era", desc: "Master the Desmos calculator and smart elimination strategies required on test day." }
                     ].map((pillar, i) => (
-                      <motion.div key={i} whileHover={{ y: -10 }} className="bg-white/40 backdrop-blur-xl p-10 rounded-[3rem] border border-white shadow-2xl hover:bg-white transition-all group">
-                         <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white mb-6 group-hover:rotate-12 transition-transform"><Layers size={24}/></div>
+                      <div key={i} className="bg-white/40 backdrop-blur-xl p-10 rounded-[3rem] border border-white shadow-2xl hover:bg-white transition-all">
+                         <div className="w-12 h-12 bg-blue-600 rounded-2xl flex items-center justify-center text-white mb-6"><Layers size={24}/></div>
                          <h4 className="font-black text-xl mb-4">{pillar.title}</h4>
                          <p className="text-slate-500 text-sm font-bold leading-relaxed">{pillar.desc}</p>
-                      </motion.div>
+                      </div>
                     ))}
                   </div>
-                </div>
-              </Section>
-
-              {/* Section 3: Integrity */}
-              <Section className="bg-slate-900 text-white">
-                <div className="max-w-4xl text-center space-y-8 px-6">
-                  <h3 className="text-blue-400 font-black uppercase text-xs tracking-widest">Section 3: Our Commitment to Integrity</h3>
-                  <h4 className="text-5xl font-black leading-tight">Academic Integrity & Excellence</h4>
-                  <p className="text-lg opacity-70 font-medium leading-relaxed">
-                    We are deeply committed to providing an honest, high-impact learning environment. All our diagnostic modules and practice questions are uniquely engineered by subject matter experts to reflect the latest testing standards without violating copyright or reproducing official Bluebook™ materials.
-                  </p>
-                  <button onClick={() => setView('diagnostic')} className="bg-blue-600 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest">Start Free Diagnostic</button>
                 </div>
               </Section>
             </motion.div>
@@ -280,14 +277,26 @@ export default function App() {
                 <div className="bg-slate-900 p-16 rounded-[4rem] text-white shadow-2xl">
                   <Target className="text-blue-400 mb-8" size={48} />
                   <h3 className="text-4xl font-black mb-6 text-blue-400">Quant Vector</h3>
-                  <p className="opacity-70 text-lg font-medium leading-relaxed">Advanced algebraic modeling, non-linear systems, and coordinate geometry synthesis.</p>
+                  <p className="opacity-70 text-lg font-medium leading-relaxed">Advanced algebraic modeling and non-linear systems synthesis.</p>
                 </div>
                 <div className="bg-white p-16 rounded-[4rem] text-slate-900 border border-slate-100 shadow-2xl">
                   <Award className="text-blue-600 mb-8" size={48} />
                   <h3 className="text-4xl font-black mb-6">Verbal Synthesis</h3>
-                  <p className="text-slate-500 text-lg font-medium leading-relaxed">Rhetorical analysis, structural transitions, and complex inference mapping.</p>
+                  <p className="text-slate-500 text-lg font-medium leading-relaxed">Structural transitions and complex inference mapping.</p>
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {/* VIEW: PRICING */}
+          {view === 'pricing' && (
+            <motion.div 
+              key="pricing" 
+              initial={{ opacity: 0, y: 20 }} 
+              animate={{ opacity: 1, y: 0 }} 
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <Pricing />
             </motion.div>
           )}
 
@@ -304,7 +313,7 @@ export default function App() {
                     <div className="text-[120px] font-black text-slate-900 leading-none mb-10 tracking-tighter">
                       {Math.round((finalScore / 10) * 800 + 800)}
                     </div>
-                    <button onClick={() => window.location.reload()} className="bg-slate-900 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest flex items-center gap-3 mx-auto shadow-xl"><RotateCcw/> Reset Lab</button>
+                    <button onClick={() => setView('home')} className="bg-slate-900 text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest flex items-center gap-3 mx-auto shadow-xl"><RotateCcw/> Return Home</button>
                   </div>
                 </div>
               )}
@@ -314,29 +323,32 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* FOOTER (With Section 4 Disclaimer) */}
+      {/* FOOTER */}
       <footer className="relative z-10 bg-white/60 backdrop-blur-md border-t border-slate-200 py-20 px-10">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-16">
             <div className="col-span-2">
               <div className="flex items-center gap-3 mb-6 font-black text-2xl tracking-tighter">
-                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white text-base">Q</div>
+                <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white">Q</div>
                 QuasarPrep
               </div>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-widest leading-loose max-w-sm">Elevating the next generation of global scholars via architectural cognitive design.</p>
+              <div className="space-y-2">
+                <p className="text-slate-400 text-xs font-black uppercase tracking-widest flex items-center gap-2"><Mail size={14}/> quasarprep@quasarprep.online</p>
+                <p className="text-slate-400 text-xs font-black uppercase tracking-widest flex items-center gap-2"><Phone size={14}/> +91 7061014213</p>
+              </div>
             </div>
             <div className="flex flex-col gap-4 text-xs font-black uppercase tracking-widest text-slate-500">
                <button onClick={()=>setView('about')} className="text-left hover:text-blue-600">The Mission</button>
-               <button onClick={()=>setView('curriculum')} className="text-left hover:text-blue-600">The Curriculum</button>
+               <button onClick={()=>setView('pricing')} className="text-left hover:text-blue-600">Pricing</button>
             </div>
             <div className="flex flex-col gap-4 text-xs font-black uppercase tracking-widest text-slate-500">
-               <a href="mailto:contact@quasarprep.com" className="text-left hover:text-blue-600">Lab Support</a>
+               <button onClick={()=>setView('curriculum')} className="text-left hover:text-blue-600">Curriculum</button>
                <span>© 2024 QuasarPrep Academic</span>
             </div>
           </div>
           <div className="border-t border-slate-100 pt-10 text-center">
             <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest max-w-4xl mx-auto leading-relaxed">
-              Section 4: Mandatory Disclaimer — SAT® is a registered trademark of the College Board, which is not affiliated with, and does not endorse, this website.
+              Mandatory Disclaimer — SAT® is a registered trademark of the College Board, which is not affiliated with, and does not endorse, this website.
             </p>
           </div>
         </div>
