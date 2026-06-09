@@ -180,7 +180,7 @@ export const QUIZ_DATA = [
       "A": "$15$",
       "B": "$17$",
       "C": "$19$",
-      "D": "$21$
+      "D": "$21$"
     },
     correct_answer: "C",
     socraticHint: "This is a nested function. Work from the 'inside out'. First, what is $g(2)$? Then plug that result into $f(x)$.",
