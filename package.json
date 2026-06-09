@@ -14,7 +14,7 @@
     "framer-motion": "^10.16.4",
     "lucide-react": "^0.284.0"
     "katex": "^0.16.8",
-  "react-katex": "^3.0.1"
+    "react-katex": "^3.0.1"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.0.0",
