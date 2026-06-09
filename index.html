@@ -3,11 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>QuasarPrep | 1500+ SAT Coaching</title>
+    <title>QuasarPrep | 1500+ SAT Neural Lab</title>
+    <!-- Tailwind CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      /* Enterprise Scroll Snapping & Hide Scrollbar */
+      body, html {
+        margin: 0;
+        padding: 0;
+        height: 100%;
+        overflow-x: hidden;
+        background: #f8fafc;
+      }
+      .no-scrollbar::-webkit-scrollbar { display: none; }
+      .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+      
+      /* Smooth transitions for 3D Canvas */
+      canvas { touch-action: none; }
+    </style>
   </head>
   <body>
     <div id="root"></div>
+    <!-- Vite standard entry point -->
     <script type="module" src="/main.jsx"></script>
   </body>
 </html>
