@@ -15,7 +15,7 @@ import Pricing from './Pricing';
 import 'katex/dist/katex.min.css';
 import { InlineMath } from 'react-katex';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { Sphere, MeshDistortMaterial, Float, Stars, OrbitControls, Environment, ContactShadows, MeshTransmissionMaterial, Text3D, Center, Float as DreiFloat } from '@react-three/drei';
+import { Sphere, MeshDistortMaterial, Float, Stars, OrbitControls, Environment, ContactShadows, Text, Center } from '@react-three/drei';
 import * as THREE from 'three';
 
 // DATA IMPORT
@@ -45,7 +45,7 @@ const FluidBackground = () => {
         this.vx = (Math.random() - 0.5) * 0.5;
         this.vy = (Math.random() - 0.5) * 0.5;
         this.radius = Math.random() * 200 + 100;
-        this.hue = Math.random() > 0.5 ? 210 : 190; // Blue to cyan range
+        this.hue = Math.random() > 0.5 ? 210 : 190;
         this.life = Math.random() * 100;
         this.maxLife = 100 + Math.random() * 100;
       }
@@ -55,7 +55,6 @@ const FluidBackground = () => {
         this.y += this.vy;
         this.life++;
 
-        // Mouse interaction - gentle repulsion
         const dx = this.x - mouse.x;
         const dy = this.y - mouse.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -65,17 +64,14 @@ const FluidBackground = () => {
           this.vy += (dy / dist) * force * 0.02;
         }
 
-        // Damping
         this.vx *= 0.99;
         this.vy *= 0.99;
 
-        // Wrap around
         if (this.x < -this.radius) this.x = width + this.radius;
         if (this.x > width + this.radius) this.x = -this.radius;
         if (this.y < -this.radius) this.y = height + this.radius;
         if (this.y > height + this.radius) this.y = -this.radius;
 
-        // Reset life
         if (this.life > this.maxLife) {
           this.life = 0;
           this.radius = Math.random() * 200 + 100;
@@ -113,7 +109,6 @@ const FluidBackground = () => {
         p.draw();
       });
 
-      // Connect nearby particles with flowing lines
       particles.forEach((p1, i) => {
         particles.slice(i + 1).forEach(p2 => {
           const dx = p1.x - p2.x;
@@ -124,7 +119,6 @@ const FluidBackground = () => {
             ctx.lineWidth = 2;
             ctx.beginPath();
             ctx.moveTo(p1.x, p1.y);
-            // Curved connection
             ctx.quadraticCurveTo(
               (p1.x + p2.x) / 2 + Math.sin(p1.life * 0.01) * 50,
               (p1.y + p2.y) / 2 + Math.cos(p1.life * 0.01) * 50,
@@ -183,21 +177,15 @@ function NeuralCore() {
       <Float speed={1.5} rotationIntensity={0.5} floatIntensity={1.5}>
         <mesh ref={meshRef}>
           <icosahedronGeometry args={[1.2, 20]} />
-          <MeshTransmissionMaterial
-            backside
-            samples={4}
-            thickness={2}
-            chromaticAberration={0.03}
-            anisotropy={0.5}
-            distortion={0.5}
-            distortionScale={0.5}
-            temporalDistortion={0.1}
-            iridescence={1}
-            iridescenceIOR={1}
-            iridescenceThicknessRange={[0, 1400]}
+          <MeshDistortMaterial
             color="#2563eb"
-            attenuationColor="#1e40af"
-            attenuationDistance={0.5}
+            attach="material"
+            distort={0.5}
+            speed={4}
+            roughness={0.1}
+            metalness={0.9}
+            emissive="#1e40af"
+            emissiveIntensity={0.2}
           />
         </mesh>
       </Float>
@@ -210,7 +198,7 @@ function NeuralCore() {
       {/* Inner glow */}
       <mesh>
         <sphereGeometry args={[0.8, 32, 32]} />
-        <meshBasicMaterial color="#3b82f6" transparent opacity={0.1} />
+        <meshBasicMaterial color="#3b82f6" transparent opacity={0.15} />
       </mesh>
     </group>
   );
@@ -233,35 +221,6 @@ function OrbitingParticle({ index, total }) {
       <sphereGeometry args={[0.05, 16, 16]} />
       <meshBasicMaterial color="#60a5fa" />
       <pointLight intensity={0.5} distance={2} color="#60a5fa" />
-    </mesh>
-  );
-}
-
-function FloatingNumbers() {
-  const numbers = ['1550', 'x²', '∑', 'π', '√', 'Δ', '∞', '∫'];
-  
-  return numbers.map((num, i) => (
-    <FloatingMath key={i} text={num} index={i} total={numbers.length} />
-  ));
-}
-
-function FloatingMath({ text, index, total }) {
-  const ref = useRef();
-  const angle = (index / total) * Math.PI * 2;
-  const height = 3 + Math.random() * 2;
-  
-  useFrame((state) => {
-    const t = state.clock.getElapsedTime();
-    ref.current.position.x = Math.cos(angle + t * 0.1) * 4;
-    ref.current.position.y = Math.sin(t * 0.5 + index) * 0.5 + height;
-    ref.current.position.z = Math.sin(angle + t * 0.1) * 4;
-    ref.current.lookAt(0, 0, 0);
-  });
-
-  return (
-    <mesh ref={ref}>
-      <textGeometry args={[text, { size: 0.3, height: 0.05 }]} />
-      <meshBasicMaterial color="#93c5fd" transparent opacity={0.4} />
     </mesh>
   );
 }
@@ -298,10 +257,9 @@ const ParallaxSection = ({ children, speed = 0.5, className }) => {
   );
 };
 
-// --- MAGNETIC INTERACTION WRAPPER (Enhanced) ---
+// --- MAGNETIC INTERACTION WRAPPER ---
 const MagneticButton = ({ children, onClick, className, strength = 0.35 }) => {
   const ref = useRef(null);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
   const x = useMotionValue(0);
   const y = useMotionValue(0);
   const springX = useSpring(x, { stiffness: 150, damping: 15 });
@@ -314,13 +272,11 @@ const MagneticButton = ({ children, onClick, className, strength = 0.35 }) => {
     const newY = (clientY - (top + height / 2)) * strength;
     x.set(newX);
     y.set(newY);
-    setPos({ x: newX, y: newY });
   };
 
   const leave = () => {
     x.set(0);
     y.set(0);
-    setPos({ x: 0, y: 0 });
   };
 
   return (
@@ -459,7 +415,7 @@ const LEGAL_CONTENT = {
   }
 };
 
-// --- LEGAL PAGE COMPONENT (Cinematic) ---
+// --- LEGAL PAGE COMPONENT ---
 const LegalPage = ({ type, onBack }) => {
   const content = LEGAL_CONTENT[type];
   const Icon = content.icon;
@@ -474,7 +430,6 @@ const LegalPage = ({ type, onBack }) => {
       exit={{ opacity: 0 }}
       className="min-h-screen pt-32 pb-20 px-6 relative"
     >
-      {/* Reading progress bar */}
       <motion.div 
         className="fixed top-0 left-0 h-1 bg-blue-600 z-[200]"
         style={{ width: progressWidth }}
@@ -610,7 +565,7 @@ const LegalPage = ({ type, onBack }) => {
   );
 };
 
-// --- THE QUIZ LOGIC (Enhanced) ---
+// --- THE QUIZ LOGIC ---
 const DiagnosticQuiz = ({ onFinish }) => {
   const [questions, setQuestions] = useState([]);
   const [idx, setIdx] = useState(0);
@@ -735,7 +690,7 @@ const DiagnosticQuiz = ({ onFinish }) => {
   );
 };
 
-// --- HERO SECTION (Cinematic) ---
+// --- HERO SECTION ---
 const CinematicHero = ({ onNavigate }) => {
   const { scrollY } = useScroll();
   const y1 = useTransform(scrollY, [0, 500], [0, 200]);
@@ -815,7 +770,6 @@ const CinematicHero = ({ onNavigate }) => {
             </Suspense>
           </Canvas>
           
-          {/* Floating UI elements around 3D scene */}
           <motion.div 
             animate={{ y: [0, -10, 0] }}
             transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
@@ -836,7 +790,6 @@ const CinematicHero = ({ onNavigate }) => {
         </motion.div>
       </div>
 
-      {/* Scroll indicator */}
       <motion.div 
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -855,7 +808,7 @@ const CinematicHero = ({ onNavigate }) => {
   );
 };
 
-// --- 6. MAIN APPLICATION (Cinematic) ---
+// --- MAIN APPLICATION ---
 export default function App() {
   const [view, setView] = useState('home');
   const [finalScore, setFinalScore] = useState(null);
@@ -878,13 +831,11 @@ export default function App() {
       <FluidBackground />
       <CursorFollower />
       
-      {/* Progress bar for all pages */}
       <motion.div 
         className="fixed top-0 left-0 right-0 h-1 bg-blue-600 origin-left z-[200]"
         style={{ scaleX }}
       />
       
-      {/* WHATSAPP WIDGET */}
       <motion.a 
         href="https://wa.me/917061014213" 
         target="_blank" 
@@ -898,7 +849,6 @@ export default function App() {
         <MessageCircle size={32} fill="white" />
       </motion.a>
 
-      {/* NAVIGATION BAR */}
       <motion.header 
         initial={{ y: -100, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
@@ -945,7 +895,6 @@ export default function App() {
       <main className="relative z-10">
         <AnimatePresence mode="wait">
           
-          {/* VIEW: HOME */}
           {view === 'home' && (
             <motion.div 
               key="home" 
@@ -956,7 +905,6 @@ export default function App() {
             >
               <CinematicHero onNavigate={handleNav} />
               
-              {/* Features Section with Parallax */}
               <ParallaxSection speed={0.3} className="py-32 px-6">
                 <div className="max-w-7xl mx-auto">
                   <div className="text-center mb-20">
@@ -1003,7 +951,6 @@ export default function App() {
                 </div>
               </ParallaxSection>
 
-              {/* Stats Section */}
               <ParallaxSection speed={-0.2} className="py-32 px-6 bg-slate-900/5">
                 <div className="max-w-6xl mx-auto grid grid-cols-2 md:grid-cols-4 gap-8">
                   {[
@@ -1029,7 +976,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* VIEW: ABOUT */}
           {view === 'about' && (
             <motion.div key="about" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="pt-32">
               <div className="max-w-4xl mx-auto px-6 text-center mb-32">
@@ -1100,7 +1046,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* VIEW: CURRICULUM */}
           {view === 'curriculum' && (
             <motion.div key="curr" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-40 max-w-6xl mx-auto px-6 text-center">
               <motion.h2 
@@ -1134,7 +1079,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* VIEW: PRICING */}
           {view === 'pricing' && (
             <motion.div 
               key="pricing" 
@@ -1146,7 +1090,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* VIEW: DIAGNOSTIC */}
           {view === 'diagnostic' && (
             <motion.div key="diag" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="pt-40">
               {finalScore === null ? (
@@ -1188,7 +1131,6 @@ export default function App() {
             </motion.div>
           )}
 
-          {/* LEGAL VIEWS */}
           {view === 'privacy' && (
             <LegalPage type="privacy" onBack={() => handleNav('home')} />
           )}
@@ -1202,7 +1144,6 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* FOOTER */}
       <footer className="relative z-10 bg-white/40 backdrop-blur-md border-t border-white/50 py-20 px-10">
         <div className="max-w-7xl mx-auto">
           <div className="grid md:grid-cols-4 gap-12 mb-16">
