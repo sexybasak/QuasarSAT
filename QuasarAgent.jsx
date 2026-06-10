@@ -3,59 +3,62 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Brain, Bot } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const SYSTEM_PROMPT = "You are the Quasar Neural Strategist. Your goal is to guide students to a 1500+ SAT score and suggest the $50 or $150 QuasarPrep plans. Contact: +917061014213. Email: quasarprep@quasarprep.online";
+const SYSTEM_PROMPT = "You are the Quasar Neural Strategist. Goal: Guide students to 1500+ SAT scores and promote QuasarPrep plans ($50/$150). Contact: +917061014213. Email: quasarprep@quasarprep.online. Be elite, professional, and concise.";
 
 const QuasarAgent = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: 'model', parts: [{ text: "Neural Link Established. I am your Quasar Strategist. How can I help you reach 1500+ today?" }] }
+  // UI Messages (includes the welcome message)
+  const [uiMessages, setUiMessages] = useState([
+    { role: 'model', text: "Neural Link Established. I am your Quasar Strategist. How can I help you reach 1500+ today?" }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatRef = useRef(null);
 
-  // 1. Safe Access to API Key
   const API_KEY = import.meta.env.VITE_GEMINI_KEY;
 
   const handleChat = async () => {
-    if (!input.trim() || loading) return;
-
-    // DIAGNOSTIC: Check if Key is missing
-    if (!API_KEY) {
-      setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Error: VITE_GEMINI_KEY is missing in Environment Variables." }] }]);
-      return;
-    }
+    if (!input.trim() || loading || !API_KEY) return;
 
     const userText = input;
-    const userMessage = { role: 'user', parts: [{ text: userText }] };
-    setMessages(prev => [...prev, userMessage]);
+    setUiMessages(prev => [...prev, { role: 'user', text: userText }]);
     setInput('');
     setLoading(true);
 
     try {
       const genAI = new GoogleGenerativeAI(API_KEY);
-      // Use 'gemini-1.5-flash-latest' for the most updated endpoint
-      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-
-      // We send the system prompt + the last 4 messages to keep it simple and avoid history errors
-      const recentHistory = messages.slice(-4);
-      
-      const chat = model.startChat({
-        history: recentHistory,
+      const model = genAI.getGenerativeModel({ 
+        model: "gemini-1.5-flash",
+        systemInstruction: SYSTEM_PROMPT // Latest SDKs support this
       });
 
-      // Injecting system prompt into the message to ensure "Agentic" behavior
-      const prompt = `[CONTEXT: ${SYSTEM_PROMPT}] User says: ${userText}`;
-      
-      const result = await chat.sendMessage(prompt);
-      const response = await result.response;
-      const text = response.text();
+      // --- THE CRITICAL FIX ---
+      // We filter the history to ensure it ONLY contains user/model pairs 
+      // and ALWAYS starts with a 'user' message.
+      const apiHistory = uiMessages
+        .filter(m => m.role === 'user' || m.role === 'model')
+        .map(m => ({
+          role: m.role,
+          parts: [{ text: m.text }]
+        }));
 
-      setMessages(prev => [...prev, { role: 'model', parts: [{ text: text }] }]);
+      // If the first message in history is 'model', remove it (Gemini requirement)
+      if (apiHistory.length > 0 && apiHistory[0].role === 'model') {
+        apiHistory.shift();
+      }
+
+      const chat = model.startChat({
+        history: apiHistory,
+      });
+
+      const result = await chat.sendMessage(userText);
+      const response = await result.response;
+      const botText = response.text();
+
+      setUiMessages(prev => [...prev, { role: 'model', text: botText }]);
     } catch (error) {
-      console.error("Gemini Error Details:", error);
-      // 2. This will now show the EXACT error message in the chat bubble for debugging
-      setMessages(prev => [...prev, { role: 'model', parts: [{ text: `Neural Lag: ${error.message.substring(0, 50)}...` }] }]);
+      console.error("Gemini Error:", error);
+      setUiMessages(prev => [...prev, { role: 'model', text: "Neural logic recalibrating. Please try again." }]);
     } finally {
       setLoading(false);
     }
@@ -63,7 +66,7 @@ const QuasarAgent = () => {
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-  }, [messages, loading]);
+  }, [uiMessages, loading]);
 
   return (
     <div style={{ zIndex: 9999, position: 'relative' }}>
@@ -86,16 +89,16 @@ const QuasarAgent = () => {
             </div>
 
             <div ref={chatRef} className="flex-grow p-6 overflow-y-auto space-y-4 no-scrollbar">
-              {messages.map((msg, i) => (
+              {uiMessages.map((msg, i) => (
                 <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   <div className={`max-w-[85%] p-4 rounded-2xl text-sm font-bold shadow-sm ${
                     msg.role === 'user' ? 'bg-blue-600 text-white' : 'bg-white text-slate-700 border border-slate-100'
                   }`}>
-                    {msg.parts[0].text}
+                    {msg.text}
                   </div>
                 </div>
               ))}
-              {loading && <div className="text-[10px] font-black text-blue-600 animate-pulse uppercase">Thinking...</div>}
+              {loading && <div className="text-[10px] font-black text-blue-600 animate-pulse uppercase">Syncing...</div>}
             </div>
 
             <div className="p-4 bg-white border-t flex gap-2">
@@ -104,7 +107,7 @@ const QuasarAgent = () => {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleChat()}
                 placeholder="Type your query..."
-                className="flex-grow bg-slate-50 border-none rounded-xl px-4 py-2 text-sm outline-none"
+                className="flex-grow bg-slate-50 border-none rounded-xl px-4 py-2 text-sm outline-none font-medium"
               />
               <button onClick={handleChat} className="bg-slate-900 text-white p-3 rounded-xl hover:bg-blue-600 transition-colors">
                 <Send size={18} />
