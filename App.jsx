@@ -7,7 +7,10 @@ import {
   FileText, Lock, ShieldCheck, RefreshCcw, ArrowLeft, ExternalLink,
   Sparkles, Waves, Droplets, Wind, Atom, Orbit, Eye, MousePointer2
 } from 'lucide-react';
+import NeuralChatbot from './NeuralChatbot';
 
+// Inside your App component's return, add this line (place it after the WhatsApp widget or anywhere):
+<NeuralChatbot />
 // EXTERNAL COMPONENT
 import Pricing from './Pricing'; 
 
