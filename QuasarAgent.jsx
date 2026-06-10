@@ -3,64 +3,64 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Send, Brain, Bot } from 'lucide-react';
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const SYSTEM_PROMPT = "You are the Quasar Neural Strategist. Your goal is to guide students to a 1500+ SAT score and suggest the $50 or $150 QuasarPrep plans. Contact: +917061014213.";
+const SYSTEM_PROMPT = "You are the Quasar Neural Strategist. Your goal is to guide students to a 1500+ SAT score and suggest the $50 or $150 QuasarPrep plans. Contact: +917061014213. Email: quasarprep@quasarprep.online";
 
 const QuasarAgent = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState([
-    { role: 'model', parts: [{ text: "Neural Link Established. Ready to architect your 1550+ roadmap. What is your current score?" }] }
+    { role: 'model', parts: [{ text: "Neural Link Established. I am your Quasar Strategist. How can I help you reach 1500+ today?" }] }
   ]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatRef = useRef(null);
 
-  // Access the key
+  // 1. Safe Access to API Key
   const API_KEY = import.meta.env.VITE_GEMINI_KEY;
 
   const handleChat = async () => {
-    if (!input.trim() || loading || !API_KEY) return;
+    if (!input.trim() || loading) return;
+
+    // DIAGNOSTIC: Check if Key is missing
+    if (!API_KEY) {
+      setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Error: VITE_GEMINI_KEY is missing in Environment Variables." }] }]);
+      return;
+    }
 
     const userText = input;
-    // Format for Gemini SDK: role must be 'user' or 'model', parts must be an array
     const userMessage = { role: 'user', parts: [{ text: userText }] };
-    
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setLoading(true);
 
     try {
       const genAI = new GoogleGenerativeAI(API_KEY);
+      // Use 'gemini-1.5-flash-latest' for the most updated endpoint
+      const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
+
+      // We send the system prompt + the last 4 messages to keep it simple and avoid history errors
+      const recentHistory = messages.slice(-4);
       
-      // FIX: Using gemini-1.5-flash but with a config object
-      const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash", 
-      });
-
-      // We pass the history but we must ensure we don't include the 'systemInstruction' inside the history array
       const chat = model.startChat({
-        history: messages,
-        generationConfig: {
-          maxOutputTokens: 500,
-        },
+        history: recentHistory,
       });
 
-      // We prepend the system prompt to the user's message to ensure the "Agent" behavior 
-      // even if the SDK doesn't support the top-level systemInstruction yet.
-      const result = await chat.sendMessage(`[SYSTEM INSTRUCTION: ${SYSTEM_PROMPT}] User Message: ${userText}`);
+      // Injecting system prompt into the message to ensure "Agentic" behavior
+      const prompt = `[CONTEXT: ${SYSTEM_PROMPT}] User says: ${userText}`;
+      
+      const result = await chat.sendMessage(prompt);
       const response = await result.response;
       const text = response.text();
 
       setMessages(prev => [...prev, { role: 'model', parts: [{ text: text }] }]);
     } catch (error) {
-      console.error("Gemini Error:", error);
-      // Fallback: If 1.5 Flash fails, try the older but stable gemini-pro
-      setMessages(prev => [...prev, { role: 'model', parts: [{ text: "Neural logic recalibrating. Please try again in a moment." }] }]);
+      console.error("Gemini Error Details:", error);
+      // 2. This will now show the EXACT error message in the chat bubble for debugging
+      setMessages(prev => [...prev, { role: 'model', parts: [{ text: `Neural Lag: ${error.message.substring(0, 50)}...` }] }]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Auto-scroll logic
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages, loading]);
@@ -95,7 +95,7 @@ const QuasarAgent = () => {
                   </div>
                 </div>
               ))}
-              {loading && <div className="text-[10px] font-black text-blue-600 animate-pulse uppercase">Logic processing...</div>}
+              {loading && <div className="text-[10px] font-black text-blue-600 animate-pulse uppercase">Thinking...</div>}
             </div>
 
             <div className="p-4 bg-white border-t flex gap-2">
@@ -103,8 +103,8 @@ const QuasarAgent = () => {
                 type="text" value={input} 
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleChat()}
-                placeholder="Ask your roadmap..."
-                className="flex-grow bg-slate-50 border-none rounded-xl px-4 py-2 text-sm outline-none font-medium"
+                placeholder="Type your query..."
+                className="flex-grow bg-slate-50 border-none rounded-xl px-4 py-2 text-sm outline-none"
               />
               <button onClick={handleChat} className="bg-slate-900 text-white p-3 rounded-xl hover:bg-blue-600 transition-colors">
                 <Send size={18} />
