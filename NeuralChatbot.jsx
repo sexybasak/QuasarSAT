@@ -3,8 +3,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   MessageCircle, X, Send, Sparkles, Brain, 
   User, Loader2, Minimize2, Maximize2,
-  Target, BookOpen, BarChart3, Lightbulb
+  Target, BookOpen, BarChart3, Lightbulb,
+  Mic, MicOff, Download, Volume2, VolumeX
 } from 'lucide-react';
+import 'katex/dist/katex.min.css';
+import { InlineMath, BlockMath } from 'react-katex';
 
 // --- CONFIGURATION ---
 const AI_CONFIG = {
@@ -15,7 +18,7 @@ const AI_CONFIG = {
   maxTokens: 2048,
   temperature: 0.7,
   topP: 0.95,
-  model: "meta-llama/llama-3.1-70b-instruct"  // ← Updated free model
+  model: "meta-llama/llama-3.1-70b-instruct"
 };
 
 // --- SUGGESTION CHIPS ---
@@ -25,6 +28,33 @@ const SUGGESTION_CHIPS = [
   { icon: BarChart3, label: "Score Analysis", prompt: "Analyze my diagnostic weak points" },
   { icon: Lightbulb, label: "Socratic Drill", prompt: "Give me a Socratic walkthrough of a hard geometry problem" },
 ];
+
+// --- LATEX PARSER ---
+const renderMathText = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  const parts = text.split(/(\$\$[\s\S]*?\$\$|\$[^\$]*?\$)/g);
+  
+  return parts.map((part, index) => {
+    if (part.startsWith('$$') && part.endsWith('$$')) {
+      const math = part.slice(2, -2).trim();
+      try {
+        return <BlockMath key={index} math={math} />;
+      } catch (e) {
+        return <span key={index} className="text-red-500">{part}</span>;
+      }
+    }
+    if (part.startsWith('$') && part.endsWith('$')) {
+      const math = part.slice(1, -1).trim();
+      try {
+        return <InlineMath key={index} math={math} />;
+      } catch (e) {
+        return <span key={index} className="text-red-500">{part}</span>;
+      }
+    }
+    return <span key={index}>{part}</span>;
+  });
+};
 
 // --- OPENROUTER API STREAMING ---
 const streamOpenRouterResponse = async (messages, onChunk, onComplete, onError) => {
@@ -96,7 +126,7 @@ const streamOpenRouterResponse = async (messages, onChunk, onComplete, onError) 
   }
 };
 
-// --- MOCK STREAM (Fallback when no API key) ---
+// --- MOCK STREAM (Fallback) ---
 const streamMockResponse = async (onChunk, onComplete) => {
   const mockResponses = [
     "Analyzing your query through the neural network...",
@@ -137,9 +167,40 @@ const streamAIResponse = async (messages, onChunk, onComplete, onError) => {
   }
 };
 
-// --- MESSAGE COMPONENT ---
-const ChatMessage = ({ message, isStreaming, isLatest }) => {
+// --- VOICE SYNTHESIS (Text-to-Speech) ---
+const speakText = (text, onEnd) => {
+  if (!window.speechSynthesis) return;
+  
+  // Strip LaTeX for cleaner speech
+  const cleanText = text
+    .replace(/\$\$[\s\S]*?\$\$/g, ' [math equation] ')
+    .replace(/\$[^\$]*?\$/g, ' [math] ')
+    .replace(/\*\*/g, '')
+    .replace(/\n/g, ' ');
+  
+  const utterance = new SpeechSynthesisUtterance(cleanText);
+  utterance.rate = 1.1;
+  utterance.pitch = 1;
+  utterance.onEnd = onEnd || (() => {});
+  
+  window.speechSynthesis.speak(utterance);
+  return utterance;
+};
+
+// --- MESSAGE COMPONENT WITH MATH & VOICE ---
+const ChatMessage = ({ message, isStreaming, isLatest, onSpeak }) => {
   const isUser = message.role === 'user';
+  const [isSpeaking, setIsSpeaking] = useState(false);
+
+  const handleSpeak = () => {
+    if (isSpeaking) {
+      window.speechSynthesis?.cancel();
+      setIsSpeaking(false);
+      return;
+    }
+    setIsSpeaking(true);
+    speakText(message.content, () => setIsSpeaking(false));
+  };
 
   return (
     <motion.div
@@ -163,8 +224,8 @@ const ChatMessage = ({ message, isStreaming, isLatest }) => {
             ? 'bg-slate-900 text-white rounded-tr-sm' 
             : 'bg-white/60 border border-white/50 text-slate-800 rounded-tl-sm'
         }`}>
-          <div className="text-sm font-medium leading-relaxed whitespace-pre-wrap">
-            {message.content}
+          <div className="text-sm font-medium leading-relaxed">
+            {renderMathText(message.content)}
             {isStreaming && isLatest && (
               <motion.span
                 animate={{ opacity: [0, 1, 0] }}
@@ -174,10 +235,24 @@ const ChatMessage = ({ message, isStreaming, isLatest }) => {
             )}
           </div>
         </div>
-        <div className={`text-[10px] font-black uppercase tracking-widest text-slate-400 mt-2 ${
-          isUser ? 'text-right' : 'text-left'
-        }`}>
-          {message.timestamp}
+        
+        <div className={`flex items-center gap-3 mt-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
+          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+            {message.timestamp}
+          </span>
+          
+          {!isUser && !isStreaming && (
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              onClick={handleSpeak}
+              className={`p-1.5 rounded-lg transition-colors ${
+                isSpeaking ? 'bg-blue-600 text-white' : 'bg-white/50 text-slate-500 hover:bg-blue-100 hover:text-blue-600'
+              }`}
+            >
+              {isSpeaking ? <VolumeX size={14} /> : <Volume2 size={14} />}
+            </motion.button>
+          )}
         </div>
       </div>
     </motion.div>
@@ -199,6 +274,64 @@ const TypingIndicator = () => (
     </div>
   </motion.div>
 );
+
+// --- VOICE INPUT BUTTON ---
+const VoiceInputButton = ({ onTranscript, disabled }) => {
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef(null);
+
+  useEffect(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
+    
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+    
+    recognition.onstart = () => setIsListening(true);
+    recognition.onend = () => setIsListening(false);
+    recognition.onerror = () => setIsListening(false);
+    
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      onTranscript(transcript);
+    };
+    
+    recognitionRef.current = recognition;
+  }, [onTranscript]);
+
+  const toggleListening = () => {
+    if (!recognitionRef.current) {
+      alert('Voice input not supported in this browser. Try Chrome or Edge.');
+      return;
+    }
+    
+    if (isListening) {
+      recognitionRef.current.stop();
+    } else {
+      recognitionRef.current.start();
+    }
+  };
+
+  return (
+    <motion.button
+      whileHover={{ scale: 1.1 }}
+      whileTap={{ scale: 0.9 }}
+      onClick={toggleListening}
+      disabled={disabled}
+      className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
+        isListening 
+          ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30' 
+          : disabled 
+            ? 'bg-slate-200 text-slate-400' 
+            : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+      }`}
+    >
+      {isListening ? <MicOff size={18} /> : <Mic size={18} />}
+    </motion.button>
+  );
+};
 
 // --- MAIN CHATBOT COMPONENT ---
 export default function NeuralChatbot() {
@@ -302,6 +435,22 @@ export default function NeuralChatbot() {
     handleSend(prompt);
   };
 
+  const handleVoiceTranscript = (transcript) => {
+    setInputValue(transcript);
+    setTimeout(() => handleSend(transcript), 100);
+  };
+
+  const exportChat = () => {
+    const text = messages.map(m => `[${m.role.toUpperCase()}] ${m.timestamp}\n${m.content}`).join('\n\n---\n\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `quasar-neural-session-${new Date().toISOString().slice(0,10)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <>
       <AnimatePresence>
@@ -363,6 +512,9 @@ export default function NeuralChatbot() {
                 </div>
               </div>
               <div className="flex items-center gap-2">
+                <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={exportChat} className="p-2 hover:bg-white/10 rounded-xl transition-colors" title="Export session">
+                  <Download size={18} />
+                </motion.button>
                 <motion.button whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }} onClick={() => setIsExpanded(!isExpanded)} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
                   {isExpanded ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
                 </motion.button>
@@ -407,7 +559,12 @@ export default function NeuralChatbot() {
               )}
 
               {messages.map((msg, index) => (
-                <ChatMessage key={msg.id} message={msg} isStreaming={msg.isStreaming} isLatest={index === messages.length - 1} />
+                <ChatMessage 
+                  key={msg.id} 
+                  message={msg} 
+                  isStreaming={msg.isStreaming} 
+                  isLatest={index === messages.length - 1} 
+                />
               ))}
               {isLoading && !isStreaming && <TypingIndicator />}
               <div ref={messagesEndRef} />
@@ -424,6 +581,10 @@ export default function NeuralChatbot() {
                   className="flex-1 bg-transparent border-none outline-none resize-none text-sm font-medium text-slate-800 placeholder:text-slate-400 py-3 max-h-32"
                   rows={1}
                   disabled={isLoading}
+                />
+                <VoiceInputButton 
+                  onTranscript={handleVoiceTranscript} 
+                  disabled={isLoading} 
                 />
                 <motion.button
                   whileHover={{ scale: 1.1 }}
