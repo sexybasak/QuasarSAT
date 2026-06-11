@@ -4,19 +4,18 @@ import {
   MessageCircle, X, Send, Sparkles, Brain, 
   User, Loader2, Minimize2, Maximize2,
   Target, BookOpen, BarChart3, Lightbulb,
-  Mic, MicOff, Download, Volume2, VolumeX
+  Mic, MicOff, Download, Volume2, VolumeX,
+  Phone, ArrowRight
 } from 'lucide-react';
 
-// --- MATH RENDERING: Use MathJax for industry-grade LaTeX ---
+// --- MATH RENDERING: MathJax Loader ---
 const MathJaxLoader = () => {
   useEffect(() => {
     if (window.MathJax) return;
-    
     const script = document.createElement('script');
     script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js';
     script.async = true;
     script.id = 'mathjax-script';
-    
     window.MathJax = {
       tex: {
         inlineMath: [['$', '$'], ['\\(', '\\)']],
@@ -31,96 +30,90 @@ const MathJaxLoader = () => {
         pageReady: () => window.MathJax.startup.defaultPageReady()
       }
     };
-    
     document.head.appendChild(script);
-    
     return () => {
       const existing = document.getElementById('mathjax-script');
       if (existing) existing.remove();
     };
   }, []);
-  
   return null;
 };
 
-// --- CONFIGURATION ---
+// --- ULTIMATE SYSTEM PROMPT FOR QUASARPREP ---
+const SYSTEM_PROMPT = `You are the "Quasar Neural Strategist," a high-performance AI agent for QuasarPrep.
+Your sole purpose: Convert visitors into elite SAT students (1550+ targets).
+
+KNOWLEDGE BASE:
+- Platform: QuasarPrep (3D Neural Laboratory).
+- Method: Socratic Hinting. Never give the answer immediately. Ask a guiding question first.
+- Tiers: 
+  1. Freemium ($0): Socratic Engine + DNA Profiler.
+  2. Specialist ($50/mo): AI Neural Help + 1 Dedicated Section Tutor.
+  3. Executive ($150/mo): 3 Tutors + Dedicated SSM (Success Specialist) + Career Counseling.
+- Contact: WhatsApp +91 7061014213 | Email: quasarprep@quasarprep.online.
+
+BEHAVIOR RULES:
+1. TONE: Authoritative, Intellectual, Cold but Encouraging. Use terms like "Neural Bottleneck," "Cognitive Mapping," and "Strategic Precision."
+2. SALES: If the user mentions a score below 1450, tell them they are "hitting a neural ceiling" that only the Specialist plan can break.
+3. SOCRATIC: If a user asks a math/verbal question, explain the logic/trap but do NOT give the final answer. Force them to think.
+4. CONTACT: If they seem interested, tell them to message the SSM on WhatsApp at +917061014213.
+
+RESPONSE FORMAT: Keep responses under 3 sentences unless explaining a complex strategy.`;
+
+// --- AI CONFIGURATION ---
 const AI_CONFIG = {
-  name: "Neural Tutor",
+  name: "Quasar Strategist",
   avatar: "Q",
-  welcomeMessage: "Welcome to the Neural Lab. I'm your SAT reasoning agent. I can deconstruct problems, identify pattern gaps, and guide your cognitive map. What concept shall we explore?",
-  systemPrompt: "You are Neural Tutor, an elite SAT preparation AI agent. You specialize in: 1) Pattern recognition in Digital SAT questions, 2) Socratic questioning to guide students to answers, 3) Real-time error analysis, 4) Adaptive difficulty calibration. Always think step-by-step and show your reasoning. Use LaTeX for math. Be concise but thorough.",
-  maxTokens: 2048,
-  temperature: 0.7,
+  welcomeMessage: "Neural Link Established. I am the Quasar Strategist. State your current mock score for architectural analysis.",
+  systemPrompt: SYSTEM_PROMPT,
+  maxTokens: 400,
+  temperature: 0.5,
   topP: 0.95,
-  model: "meta-llama/llama-3.1-70b-instruct"
+  model: "meta-llama/llama-3-70b-instruct"
 };
 
 // --- SUGGESTION CHIPS ---
 const SUGGESTION_CHIPS = [
-  { icon: Target, label: "Quant Strategy", prompt: "Show me a high-yield algebra pattern for Digital SAT" },
-  { icon: BookOpen, label: "Reading Traps", prompt: "What are the 3 most common inference traps in SAT Reading?" },
-  { icon: BarChart3, label: "Score Analysis", prompt: "Analyze my diagnostic weak points" },
-  { icon: Lightbulb, label: "Socratic Drill", prompt: "Give me a Socratic walkthrough of a hard geometry problem" },
+  { icon: Target, label: "Score Analysis", prompt: "My mock score is 1320. What's my neural bottleneck?" },
+  { icon: BookOpen, label: "Quant Traps", prompt: "Show me a high-yield algebra trap the SAT uses." },
+  { icon: BarChart3, label: "Plan Compare", prompt: "What's the difference between Specialist and Executive?" },
+  { icon: Lightbulb, label: "Socratic Drill", prompt: "Give me a Socratic walkthrough of a hard geometry problem." },
 ];
 
-// --- LATEX PARSER WITH MATHJAX ---
+// --- MATH RENDERER ---
 const MathRenderer = ({ text }) => {
   const containerRef = useRef(null);
-
   useEffect(() => {
     if (window.MathJax && containerRef.current) {
-      window.MathJax.typesetPromise([containerRef.current]).catch((err) => {
-        console.error('MathJax typeset failed:', err);
-      });
+      window.MathJax.typesetPromise([containerRef.current]).catch(() => {});
     }
   }, [text]);
-
-  // Pre-process text to ensure proper LaTeX delimiters
   const processedText = text
-    .replace(/\\\(/g, '$')
-    .replace(/\\\)/g, '$')
-    .replace(/\\\[/g, '$$')
-    .replace(/\\\]/g, '$$')
+    .replace(/\\\(/g, '$').replace(/\\\)/g, '$')
+    .replace(/\\\[/g, '$$').replace(/\\\]/g, '$$')
     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
     .replace(/\n/g, '<br/>');
-
-  return (
-    <div 
-      ref={containerRef} 
-      className="math-content text-sm font-medium leading-relaxed"
-      dangerouslySetInnerHTML={{ __html: processedText }}
-    />
-  );
+  return <div ref={containerRef} className="math-content text-sm font-medium leading-relaxed" dangerouslySetInnerHTML={{ __html: processedText }} />;
 };
 
-// --- INDUSTRY-GRADE TTS: ResponsiveVoice.js (Free Tier) ---
+// --- TTS ENGINE ---
 const TTSEngine = {
   isLoaded: false,
-  queue: [],
-  
   load: () => {
     if (TTSEngine.isLoaded) return Promise.resolve();
-    
     return new Promise((resolve, reject) => {
       if (document.getElementById('responsivevoice-script')) {
-        TTSEngine.isLoaded = true;
-        resolve();
-        return;
+        TTSEngine.isLoaded = true; resolve(); return;
       }
-      
       const script = document.createElement('script');
       script.id = 'responsivevoice-script';
       script.src = 'https://code.responsivevoice.org/responsivevoice.js?key=YOUR_FREE_KEY';
       script.async = true;
-      script.onload = () => {
-        TTSEngine.isLoaded = true;
-        resolve();
-      };
+      script.onload = () => { TTSEngine.isLoaded = true; resolve(); };
       script.onerror = reject;
       document.head.appendChild(script);
     });
   },
-  
   speak: (text, onEnd) => {
     const cleanText = text
       .replace(/\$\$[\s\S]*?\$\$/g, ' [equation] ')
@@ -128,94 +121,45 @@ const TTSEngine = {
       .replace(/<<strong>(.*?)<<\/strong>/g, '$1')
       .replace(/<<br\/>/g, ' ')
       .replace(/\n/g, ' ');
-    
     if (window.responsiveVoice) {
       window.responsiveVoice.speak(cleanText, 'UK English Male', {
-        rate: 0.95,
-        pitch: 1.05,
-        volume: 1,
+        rate: 0.95, pitch: 1.05, volume: 1,
         onend: onEnd || (() => {}),
         onerror: (e) => console.error('TTS error:', e)
       });
       return true;
     }
-    
-    // Fallback to native TTS with enhanced settings
     return TTSEngine.fallbackSpeak(cleanText, onEnd);
   },
-  
   fallbackSpeak: (text, onEnd) => {
     if (!window.speechSynthesis) return false;
-    
-    // Cancel any ongoing speech
     window.speechSynthesis.cancel();
-    
-    const utterance = new SpeechSynthesisUtterance(text);
-    
-    // Try to find a premium voice
     const voices = window.speechSynthesis.getVoices();
-    const premiumVoices = [
-      'Google UK English Male',
-      'Microsoft David',
-      'Microsoft Mark',
-      'Daniel',
-      'Alex',
-      'Samantha',
-      'Karen'
-    ];
-    
-    const selectedVoice = voices.find(v => 
-      premiumVoices.some(pv => v.name.includes(pv))
-    ) || voices.find(v => v.lang === 'en-US' || v.lang === 'en-GB') || voices[0];
-    
-    if (selectedVoice) utterance.voice = selectedVoice;
-    
-    utterance.rate = 0.92;
-    utterance.pitch = 1.02;
-    utterance.volume = 1;
-    
-    // Split long text to avoid chrome's 15-second limit
+    const premiumVoices = ['Google UK English Male','Microsoft David','Microsoft Mark','Daniel','Alex','Samantha','Karen'];
+    const selectedVoice = voices.find(v => premiumVoices.some(pv => v.name.includes(pv))) || voices.find(v => v.lang === 'en-US' || v.lang === 'en-GB') || voices[0];
     const chunks = text.match(/.{1,200}(?:\s|$)/g) || [text];
     let currentChunk = 0;
-    
     const speakChunk = () => {
-      if (currentChunk >= chunks.length) {
-        onEnd?.();
-        return;
-      }
-      
-      const chunkUtterance = new SpeechSynthesisUtterance(chunks[currentChunk]);
-      if (selectedVoice) chunkUtterance.voice = selectedVoice;
-      chunkUtterance.rate = 0.92;
-      chunkUtterance.pitch = 1.02;
-      chunkUtterance.volume = 1;
-      chunkUtterance.onend = () => {
-        currentChunk++;
-        speakChunk();
-      };
-      
-      window.speechSynthesis.speak(chunkUtterance);
+      if (currentChunk >= chunks.length) { onEnd?.(); return; }
+      const u = new SpeechSynthesisUtterance(chunks[currentChunk]);
+      if (selectedVoice) u.voice = selectedVoice;
+      u.rate = 0.92; u.pitch = 1.02; u.volume = 1;
+      u.onend = () => { currentChunk++; speakChunk(); };
+      window.speechSynthesis.speak(u);
     };
-    
     speakChunk();
     return true;
   },
-  
   stop: () => {
-    if (window.responsiveVoice) {
-      window.responsiveVoice.cancel();
-    }
-    if (window.speechSynthesis) {
-      window.speechSynthesis.cancel();
-    }
+    if (window.responsiveVoice) window.responsiveVoice.cancel();
+    if (window.speechSynthesis) window.speechSynthesis.cancel();
   }
 };
 
-// --- OPENROUTER API STREAMING ---
+// --- OPENROUTER STREAMING ---
 const streamOpenRouterResponse = async (messages, onChunk, onComplete, onError) => {
   try {
     const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-    
     if (!API_KEY) throw new Error('VITE_OPENROUTER_API_KEY not configured');
 
     const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
@@ -251,27 +195,17 @@ const streamOpenRouterResponse = async (messages, onChunk, onComplete, onError) 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-
       const chunk = decoder.decode(value);
       const lines = chunk.split('\n').filter(line => line.trim());
-
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
-          if (data === '[DONE]') {
-            onComplete(fullText);
-            return;
-          }
+          if (data === '[DONE]') { onComplete(fullText); return; }
           try {
             const parsed = JSON.parse(data);
             const content = parsed.choices?.[0]?.delta?.content || '';
-            if (content) {
-              fullText += content;
-              onChunk(content);
-            }
-          } catch (e) {
-            // skip malformed lines
-          }
+            if (content) { fullText += content; onChunk(content); }
+          } catch (e) {}
         }
       }
     }
@@ -284,28 +218,23 @@ const streamOpenRouterResponse = async (messages, onChunk, onComplete, onError) 
 // --- MOCK STREAM (Fallback) ---
 const streamMockResponse = async (onChunk, onComplete) => {
   const mockResponses = [
-    "Analyzing your query through the neural network...",
-    "This is a classic **Pattern Type 7** — quadratic systems with hidden symmetry.",
-    "Let's apply the Socratic method: What do you notice about the coefficients $a$ and $b$ in the system?",
-    "The key insight is recognizing that $$x^2 + y^2 = (x+y)^2 - 2xy$$.",
-    "This allows us to collapse the system into a single variable substitution.",
-    "Try setting $u = x + y$ and $v = xy$. The equations become: $$u^2 - 2v = 25$$ and $$u + v = 11$$.",
-    "From the second: $v = 11 - u$. Substitute: $$u^2 - 2(11-u) = 25$$ → $$u^2 + 2u - 47 = 0$$.",
-    "Solving: $$u = -1 \\pm \\sqrt{48}$$. Since $x,y$ are positive, $$u = -1 + 4\\sqrt{3}$$.",
-    "Therefore, the answer is **A**.",
-    "Would you like me to generate a similar problem for practice, or shall we analyze your error pattern from the diagnostic?"
+    "Neural analysis initiated. Your cognitive architecture shows a 1320 ceiling — this is a **Pattern Recognition Deficit** in the Quant Vector.",
+    "You're hitting a **neural bottleneck** at the algebraic modeling layer. The Specialist plan ($50/mo) deploys a dedicated Section Tutor to rewire this pathway.",
+    "Let me apply Socratic precision: When you see $x^2 + y^2 = 25$ and $x + y = 7$, what's your **first instinct**? Most students brute-force substitution. That's the trap.",
+    "The elite move is recognizing **symmetric collapse** — set $u = x+y$, $v = xy$. This transforms the system into a single-variable neural pathway.",
+    "Your current mock trajectory suggests a **150-point gap** to 1550+. The Executive tier ($150/mo) assigns a dedicated SSM to monitor this gap weekly.",
+    "Message our SSM on WhatsApp at **+91 7061014213** for a free Neural Diagnostic. We'll map your exact bottleneck in 10 minutes."
   ];
-  
   let fullText = "";
   for (const segment of mockResponses) {
     for (let i = 0; i < segment.length; i++) {
-      await new Promise(r => setTimeout(r, 25));
+      await new Promise(r => setTimeout(r, 30));
       fullText += segment[i];
       onChunk(segment[i]);
     }
     fullText += "\n\n";
     onChunk("\n\n");
-    await new Promise(r => setTimeout(r, 300));
+    await new Promise(r => setTimeout(r, 400));
   }
   onComplete(fullText);
 };
@@ -313,7 +242,6 @@ const streamMockResponse = async (onChunk, onComplete) => {
 // --- UNIFIED STREAM HANDLER ---
 const streamAIResponse = async (messages, onChunk, onComplete, onError) => {
   const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-  
   if (API_KEY && API_KEY.length > 10) {
     await streamOpenRouterResponse(messages, onChunk, onComplete, onError);
   } else {
@@ -322,7 +250,7 @@ const streamAIResponse = async (messages, onChunk, onComplete, onError) => {
   }
 };
 
-// --- MESSAGE COMPONENT WITH MATH & VOICE ---
+// --- MESSAGE COMPONENT ---
 const ChatMessage = ({ message, isStreaming, isLatest }) => {
   const isUser = message.role === 'user';
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -337,15 +265,14 @@ const ChatMessage = ({ message, isStreaming, isLatest }) => {
       setIsSpeaking(false);
       return;
     }
-    
     setIsSpeaking(true);
     const success = TTSEngine.speak(message.content, () => setIsSpeaking(false));
-    
-    if (!success) {
-      setIsSpeaking(false);
-      alert('Text-to-speech not available in this browser');
-    }
+    if (!success) { setIsSpeaking(false); alert('Text-to-speech not available'); }
   };
+
+  // Detect if message contains WhatsApp/CTA and render special button
+  const hasWhatsApp = message.content.includes('+91 7061014213') || message.content.includes('WhatsApp');
+  const hasPlan = message.content.includes('Specialist') || message.content.includes('Executive') || message.content.includes('Freemium');
 
   return (
     <motion.div
@@ -370,11 +297,7 @@ const ChatMessage = ({ message, isStreaming, isLatest }) => {
             : 'bg-white/60 border border-white/50 text-slate-800 rounded-tl-sm'
         }`}>
           <div className="text-sm font-medium leading-relaxed">
-            {isUser ? (
-              <span>{message.content}</span>
-            ) : (
-              <MathRenderer text={message.content} />
-            )}
+            {isUser ? <span>{message.content}</span> : <MathRenderer text={message.content} />}
             {isStreaming && isLatest && (
               <motion.span
                 animate={{ opacity: [0, 1, 0] }}
@@ -385,11 +308,27 @@ const ChatMessage = ({ message, isStreaming, isLatest }) => {
           </div>
         </div>
         
+        {/* CTA Buttons for Sales Conversion */}
+        {!isUser && !isStreaming && hasWhatsApp && (
+          <motion.a
+            href="https://wa.me/917061014213"
+            target="_blank"
+            rel="noopener noreferrer"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ scale: 1.05 }}
+            className="inline-flex items-center gap-2 mt-3 bg-green-500 text-white px-4 py-2 rounded-xl text-xs font-black uppercase tracking-widest shadow-lg"
+          >
+            <Phone size={14} />
+            Message SSM on WhatsApp
+            <ArrowRight size={14} />
+          </motion.a>
+        )}
+
         <div className={`flex items-center gap-3 mt-2 ${isUser ? 'justify-end' : 'justify-start'}`}>
           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
             {message.timestamp}
           </span>
-          
           {!isUser && !isStreaming && (
             <motion.button
               whileHover={{ scale: 1.1 }}
@@ -431,7 +370,6 @@ const VoiceInputButton = ({ onTranscript, disabled }) => {
 
   useEffect(() => {
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) return;
-    
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
@@ -441,16 +379,11 @@ const VoiceInputButton = ({ onTranscript, disabled }) => {
     
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = (event) => {
-      console.error('Speech recognition error:', event.error);
-      setIsListening(false);
-    };
+    recognition.onerror = () => setIsListening(false);
     
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
       const confidence = event.results[0][0].confidence;
-      
-      // Only accept if confidence is reasonable
       if (confidence > 0.6 || event.results[0].isFinal) {
         onTranscript(transcript);
       }
@@ -461,20 +394,11 @@ const VoiceInputButton = ({ onTranscript, disabled }) => {
 
   const toggleListening = () => {
     if (!recognitionRef.current) {
-      alert('Voice input not supported in this browser. Try Chrome or Edge.');
+      alert('Voice input not supported. Try Chrome or Edge.');
       return;
     }
-    
-    if (isListening) {
-      recognitionRef.current.stop();
-    } else {
-      // Request permission and start
-      try {
-        recognitionRef.current.start();
-      } catch (err) {
-        console.error('Failed to start recognition:', err);
-      }
-    }
+    if (isListening) recognitionRef.current.stop();
+    else recognitionRef.current.start();
   };
 
   return (
@@ -486,9 +410,7 @@ const VoiceInputButton = ({ onTranscript, disabled }) => {
       className={`w-12 h-12 rounded-full flex items-center justify-center transition-all ${
         isListening 
           ? 'bg-red-500 text-white animate-pulse shadow-lg shadow-red-500/30' 
-          : disabled 
-            ? 'bg-slate-200 text-slate-400' 
-            : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
+          : disabled ? 'bg-slate-200 text-slate-400' : 'bg-blue-100 text-blue-600 hover:bg-blue-200'
       }`}
     >
       {isListening ? <MicOff size={18} /> : <Mic size={18} />}
@@ -521,7 +443,6 @@ export default function NeuralChatbot() {
     setHasApiKey(key && key.length > 10);
   }, []);
 
-  // Load TTS engine on mount
   useEffect(() => {
     TTSEngine.load().catch(() => console.log('ResponsiveVoice not loaded, using fallback'));
   }, []);
@@ -535,9 +456,7 @@ export default function NeuralChatbot() {
   }, [messages, scrollToBottom]);
 
   useEffect(() => {
-    if (isOpen) {
-      setTimeout(() => inputRef.current?.focus(), 300);
-    }
+    if (isOpen) setTimeout(() => inputRef.current?.focus(), 300);
   }, [isOpen]);
 
   const handleSend = async (text = inputValue) => {
@@ -747,7 +666,7 @@ export default function NeuralChatbot() {
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="Ask about SAT patterns, strategies, or your diagnostic..."
+                  placeholder="State your mock score or ask about neural strategies..."
                   className="flex-1 bg-transparent border-none outline-none resize-none text-sm font-medium text-slate-800 placeholder:text-slate-400 py-3 max-h-32"
                   rows={1}
                   disabled={isLoading}
@@ -770,7 +689,7 @@ export default function NeuralChatbot() {
               </div>
               <div className="text-center mt-3">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  {hasApiKey ? 'Powered by OpenRouter • Real-time Stream' : 'Mock Mode — Add VITE_OPENROUTER_API_KEY for Live AI'}
+                  {hasApiKey ? 'Powered by Quasar Neural Core • Real-time Stream' : 'Mock Mode — Add VITE_OPENROUTER_API_KEY for Live AI'}
                 </span>
               </div>
             </div>
