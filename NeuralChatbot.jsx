@@ -15,7 +15,7 @@ const AI_CONFIG = {
   maxTokens: 2048,
   temperature: 0.7,
   topP: 0.95,
-  model: "gemini-2.0-flash"
+  model: "meta-llama/llama-3.1-8b-instruct:free"
 };
 
 // --- SUGGESTION CHIPS ---
@@ -26,52 +26,37 @@ const SUGGESTION_CHIPS = [
   { icon: Lightbulb, label: "Socratic Drill", prompt: "Give me a Socratic walkthrough of a hard geometry problem" },
 ];
 
-// --- GEMINI API STREAMING ---
-const streamGeminiResponse = async (messages, onChunk, onComplete, onError) => {
+// --- OPENROUTER API STREAMING ---
+const streamOpenRouterResponse = async (messages, onChunk, onComplete, onError) => {
   try {
-    const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+    const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
     
-    if (!API_KEY) {
-      throw new Error('VITE_GEMINI_API_KEY not configured in environment variables');
-    }
+    if (!API_KEY) throw new Error('VITE_OPENROUTER_API_KEY not configured');
 
-    // Convert messages to Gemini format
-    const contents = [
-      {
-        role: 'user',
-        parts: [{ text: AI_CONFIG.systemPrompt }]
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': window.location.origin || 'https://quasarprep.online',
+        'X-Title': 'QuasarPrep SAT Tutor'
       },
-      ...messages.map(m => ({
-        role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }]
-      }))
-    ];
-
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${AI_CONFIG.model}:streamGenerateContent?alt=sse&key=${API_KEY}`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents,
-          generationConfig: {
-            maxOutputTokens: AI_CONFIG.maxTokens,
-            temperature: AI_CONFIG.temperature,
-            topP: AI_CONFIG.topP,
-          },
-          safetySettings: [
-            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_ONLY_HIGH' },
-            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_ONLY_HIGH' }
-          ]
-        })
-      }
-    );
+      body: JSON.stringify({
+        model: AI_CONFIG.model,
+        messages: [
+          { role: 'system', content: AI_CONFIG.systemPrompt },
+          ...messages.map(m => ({ role: m.role, content: m.content }))
+        ],
+        stream: true,
+        max_tokens: AI_CONFIG.maxTokens,
+        temperature: AI_CONFIG.temperature,
+        top_p: AI_CONFIG.topP
+      })
+    });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error?.message || `HTTP error! status: ${response.status}`);
+      const err = await response.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${response.status}`);
     }
 
     const reader = response.body.getReader();
@@ -83,37 +68,30 @@ const streamGeminiResponse = async (messages, onChunk, onComplete, onError) => {
       if (done) break;
 
       const chunk = decoder.decode(value);
-      const lines = chunk.split('\n').filter(line => line.trim() !== '');
+      const lines = chunk.split('\n').filter(line => line.trim());
 
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
-          
+          if (data === '[DONE]') {
+            onComplete(fullText);
+            return;
+          }
           try {
             const parsed = JSON.parse(data);
-            
-            // Check for finish reason
-            if (parsed.candidates?.[0]?.finishReason === 'SAFETY') {
-              onChunk('\n\n[Response blocked by safety settings. Try rephrasing your question.]');
-              continue;
-            }
-
-            const content = parsed.candidates?.[0]?.content?.parts?.[0]?.text || '';
+            const content = parsed.choices?.[0]?.delta?.content || '';
             if (content) {
               fullText += content;
               onChunk(content);
             }
           } catch (e) {
-            // Skip malformed JSON lines
-            console.debug('Skipping malformed SSE line:', line.slice(0, 100));
+            // skip malformed lines
           }
         }
       }
     }
-
     onComplete(fullText);
   } catch (error) {
-    console.error('Gemini API Error:', error);
     onError(error.message);
   }
 };
@@ -144,18 +122,17 @@ const streamMockResponse = async (onChunk, onComplete) => {
     onChunk("\n\n");
     await new Promise(r => setTimeout(r, 300));
   }
-  
   onComplete(fullText);
 };
 
 // --- UNIFIED STREAM HANDLER ---
 const streamAIResponse = async (messages, onChunk, onComplete, onError) => {
-  const API_KEY = import.meta.env.VITE_GEMINI_API_KEY;
+  const API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
   
   if (API_KEY && API_KEY.length > 10) {
-    await streamGeminiResponse(messages, onChunk, onComplete, onError);
+    await streamOpenRouterResponse(messages, onChunk, onComplete, onError);
   } else {
-    console.warn('No VITE_GEMINI_API_KEY found, using mock stream');
+    console.warn('No VITE_OPENROUTER_API_KEY found, using mock stream');
     await streamMockResponse(onChunk, onComplete);
   }
 };
@@ -243,9 +220,8 @@ export default function NeuralChatbot() {
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
-  // Check for API key on mount
   useEffect(() => {
-    const key = import.meta.env.VITE_GEMINI_API_KEY;
+    const key = import.meta.env.VITE_OPENROUTER_API_KEY;
     setHasApiKey(key && key.length > 10);
   }, []);
 
@@ -405,7 +381,7 @@ export default function NeuralChatbot() {
                 >
                   <p className="text-xs font-black uppercase tracking-widest text-amber-600 mb-1">Configuration Needed</p>
                   <p className="text-sm text-amber-700 font-medium">
-                    Add <code className="bg-amber-500/20 px-1 rounded">VITE_GEMINI_API_KEY</code> to your <code className="bg-amber-500/20 px-1 rounded">.env</code> file for live AI responses.
+                    Add <code className="bg-amber-500/20 px-1 rounded">VITE_OPENROUTER_API_KEY</code> to your <code className="bg-amber-500/20 px-1 rounded">.env</code> file for live AI responses.
                   </p>
                 </motion.div>
               )}
@@ -463,7 +439,7 @@ export default function NeuralChatbot() {
               </div>
               <div className="text-center mt-3">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                  {hasApiKey ? 'Powered by Gemini • Real-time Stream' : 'Mock Mode — Add VITE_GEMINI_API_KEY for Live AI'}
+                  {hasApiKey ? 'Powered by OpenRouter • Real-time Stream' : 'Mock Mode — Add VITE_OPENROUTER_API_KEY for Live AI'}
                 </span>
               </div>
             </div>
