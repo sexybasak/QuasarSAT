@@ -7,10 +7,7 @@ import {
   FileText, Lock, ShieldCheck, RefreshCcw, ArrowLeft, ExternalLink,
   Sparkles, Waves, Droplets, Wind, Atom, Orbit, Eye, MousePointer2
 } from 'lucide-react';
-import NeuralChatbot from './NeuralChatbot';
 
-// Inside your App component's return, add this line (place it after the WhatsApp widget or anywhere):
-<NeuralChatbot />
 // EXTERNAL COMPONENT
 import Pricing from './Pricing'; 
 
@@ -23,6 +20,7 @@ import * as THREE from 'three';
 
 // DATA IMPORT
 import { QUIZ_DATA } from './questions.js';
+import NeuralChatbot from './NeuralChatbot';
 
 // --- ENHANCED FLUID BACKGROUND SYSTEM ---
 const FluidBackground = () => {
@@ -1193,6 +1191,7 @@ export default function App() {
           </div>
         </div>
       </footer>
+      <NeuralChatbot /> 
     </div>
   );
 }
