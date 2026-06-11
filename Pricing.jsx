@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Check, Send, MessageCircle, Mail, Zap, 
   Award, Target, ShieldCheck, Users, Compass,
-  Loader2, Lock, CreditCard, RefreshCw
+  Loader2, Lock, CreditCard, RefreshCw, Phone,
+  User, BookOpen, TrendingUp, AlertCircle
 } from 'lucide-react';
 
 // --- EXCHANGE RATE HOOK ---
@@ -27,14 +28,14 @@ const useExchangeRate = () => {
 
   useEffect(() => {
     fetchRate();
-    const interval = setInterval(fetchRate, 3600000); // Refresh hourly
+    const interval = setInterval(fetchRate, 3600000);
     return () => clearInterval(interval);
   }, []);
 
   return { rate, loading, lastUpdated, refresh: fetchRate };
 };
 
-// --- RAZORPAY BUTTON WITH LIVE PRICING ---
+// --- RAZORPAY BUTTON ---
 const RazorpayButton = ({ tier, rate, onSuccess, onError }) => {
   const [loading, setLoading] = useState(false);
 
@@ -59,7 +60,7 @@ const RazorpayButton = ({ tier, rate, onSuccess, onError }) => {
     }
 
     try {
-      const inrAmount = Math.round(tier.usdPrice * rate * 100); // paise
+      const inrAmount = Math.round(tier.usdPrice * rate * 100);
 
       const orderResponse = await fetch('/api/create-razorpay-order', {
         method: 'POST',
@@ -89,15 +90,8 @@ const RazorpayButton = ({ tier, rate, onSuccess, onError }) => {
         image: 'https://quasarprep.online/logo.png',
         order_id: orderData.id,
         handler: (response) => verifyPayment(response, tier, rate),
-        prefill: {
-          name: '',
-          email: '',
-          contact: ''
-        },
-        notes: {
-          usdPrice: tier.usdPrice,
-          exchangeRate: rate
-        },
+        prefill: { name: '', email: '', contact: '' },
+        notes: { usdPrice: tier.usdPrice, exchangeRate: rate },
         theme: { color: '#2563eb' }
       };
 
@@ -162,12 +156,46 @@ const RazorpayButton = ({ tier, rate, onSuccess, onError }) => {
   );
 };
 
-// --- MAIN PRICING COMPONENT ---
+// --- WHATSAPP WIDGET ---
+const WhatsAppWidget = () => (
+  <motion.a
+    href="https://wa.me/917061014213"
+    target="_blank"
+    rel="noopener noreferrer"
+    initial={{ scale: 0, opacity: 0 }}
+    animate={{ scale: 1, opacity: 1 }}
+    whileHover={{ scale: 1.1 }}
+    className="fixed bottom-8 left-8 z-[999] bg-[#25D366] text-white p-4 rounded-full shadow-2xl flex items-center justify-center group"
+    title="Chat with QuasarPrep Support"
+  >
+    <MessageCircle size={32} fill="white" />
+    <span className="absolute -top-1 -right-1 flex h-4 w-4">
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+      <span className="relative inline-flex rounded-full h-4 w-4 bg-white"></span>
+    </span>
+    <span className="absolute left-16 bg-slate-900 text-white text-[10px] px-3 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity font-black uppercase tracking-widest whitespace-nowrap pointer-events-none">
+      WhatsApp Support
+    </span>
+  </motion.a>
+);
+
 const Pricing = () => {
   const { rate, loading: rateLoading, lastUpdated, refresh } = useExchangeRate();
-  const [formStatus, setFormStatus] = useState('idle');
+  const [formStatus, setFormStatus] = useState('idle'); // idle | submitting | success | error
+  const [formError, setFormError] = useState('');
   const [paymentSuccess, setPaymentSuccess] = useState(null);
   const [paymentError, setPaymentError] = useState(null);
+
+  // Form state
+  const [formData, setFormData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    targetScore: '1500 - 1530',
+    currentScore: '',
+    painPoints: '',
+    preferredPlan: ''
+  });
 
   const basePrices = { specialist: 50, executive: 150 };
 
@@ -178,7 +206,12 @@ const Pricing = () => {
       category: "Freemium",
       usdPrice: 0,
       description: "Ideal for self-driven scholars starting their 1500+ journey.",
-      features: ["Full Socratic Engine Access", "DNA Profiler Diagnostic", "Basic Pattern Analytics", "Community Support Access"],
+      features: [
+        "Full Socratic Engine Access",
+        "DNA Profiler Diagnostic",
+        "Basic Pattern Analytics",
+        "Community Support Access"
+      ],
       button: "Access Lab",
       highlight: false
     },
@@ -188,7 +221,13 @@ const Pricing = () => {
       category: "Pro Tier",
       usdPrice: basePrices.specialist,
       description: "Advanced AI integration for targeted section mastery.",
-      features: ["Everything in Freemium", "Real-time AI Neural Help", "1 Dedicated Section Tutor", "Bi-weekly Strategy Audits", "Advanced DNA Mapping"],
+      features: [
+        "Everything in Freemium",
+        "Real-time AI Neural Help",
+        "1 Dedicated Section Tutor",
+        "Bi-weekly Strategy Audits",
+        "Advanced DNA Mapping"
+      ],
       button: "Upgrade to Pro",
       highlight: true
     },
@@ -198,37 +237,105 @@ const Pricing = () => {
       category: "Elite Tier",
       usdPrice: basePrices.executive,
       description: "The gold standard for Ivy League admissions preparation.",
-      features: ["Everything in Specialist", "3 Dedicated Tutors", "Dedicated SSM", "Career Counseling", "Unlimited Proctors"],
+      features: [
+        "Everything in Specialist",
+        "3 Dedicated Tutors (Quant/Verbal)",
+        "Dedicated Success Specialist (SSM)",
+        "Free Career & College Counseling",
+        "Unlimited Practice Proctors"
+      ],
       button: "Go Executive",
       highlight: false
     }
   ];
 
+  const handleFormChange = (e) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  const handleFormSubmit = async (e) => {
+    e.preventDefault();
+    setFormStatus('submitting');
+    setFormError('');
+
+    try {
+      const response = await fetch('/api/enroll-student', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          submittedAt: new Date().toISOString(),
+          source: 'pricing_page'
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Enrollment failed');
+      }
+
+      setFormStatus('success');
+      setFormData({
+        name: '', email: '', phone: '', targetScore: '1500 - 1530',
+        currentScore: '', painPoints: '', preferredPlan: ''
+      });
+    } catch (error) {
+      setFormStatus('error');
+      setFormError(error.message);
+    }
+  };
+
   const handlePaymentSuccess = (data) => {
     setPaymentSuccess(data);
-    setFormStatus('success');
+  };
+
+  const handlePaymentError = (error) => {
+    setPaymentError(error);
+    setTimeout(() => setPaymentError(null), 5000);
+  };
+
+  const selectPlan = (planId) => {
+    setFormData(prev => ({ ...prev, preferredPlan: planId }));
+    // Scroll to form
+    document.getElementById('enrollment-form')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
     <div className="relative min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100 pb-20">
-      {/* WhatsApp Widget */}
-      <motion.a href="https://wa.me/917061014213" target="_blank" rel="noopener noreferrer"
-        className="fixed bottom-8 left-8 z-[999] bg-[#25D366] text-white p-4 rounded-full shadow-2xl flex items-center justify-center">
-        <MessageCircle size={32} fill="white" />
-      </motion.a>
+      <WhatsAppWidget />
 
-      {/* Success/Error Modals */}
+      {/* Payment Success Modal */}
       <AnimatePresence>
         {paymentSuccess && (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6">
-            <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }} className="bg-white rounded-[3rem] p-12 max-w-md w-full text-center">
-              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-white mx-auto mb-6">
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-[3rem] p-12 max-w-md w-full text-center shadow-2xl"
+            >
+              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-white mx-auto mb-6 shadow-xl">
                 <Check size={40} />
               </div>
-              <h3 className="text-3xl font-black mb-2">Payment Successful</h3>
-              <p className="text-slate-500 mb-4">Paid ₹{paymentSuccess.inrPaid?.toLocaleString('en-IN')} for ${paymentSuccess.usdPrice} plan</p>
-              <p className="text-xs text-slate-400 mb-6">Exchange rate applied at time of payment</p>
-              <button onClick={() => setPaymentSuccess(null)} className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest">
+              <h3 className="text-3xl font-black tracking-tight mb-2">Neural Link Activated.</h3>
+              <p className="text-slate-500 font-medium mb-6">
+                Payment successful. Welcome to QuasarPrep.
+              </p>
+              <div className="bg-slate-50 rounded-2xl p-4 mb-6 text-left">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Payment ID</p>
+                <p className="text-sm font-mono text-slate-700 break-all">{paymentSuccess.paymentId}</p>
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1 mt-3">Amount Paid</p>
+                <p className="text-sm font-black text-slate-700">₹{paymentSuccess.inrPaid?.toLocaleString('en-IN')}</p>
+              </div>
+              <button 
+                onClick={() => setPaymentSuccess(null)}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-900 transition-all"
+              >
                 Enter Neural Lab
               </button>
             </motion.div>
@@ -236,16 +343,36 @@ const Pricing = () => {
         )}
       </AnimatePresence>
 
-      {/* Header */}
+      {/* Payment Error Toast */}
+      <AnimatePresence>
+        {paymentError && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3"
+          >
+            <AlertCircle size={18} />
+            <span className="text-sm font-black">{paymentError}</span>
+            <button onClick={() => setPaymentError(null)} className="text-white/80 hover:text-white">✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Header Section */}
       <section className="pt-32 pb-20 px-6 text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="max-w-4xl mx-auto">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="max-w-4xl mx-auto"
+        >
           <span className="text-blue-600 font-black text-xs uppercase tracking-[0.4em] mb-4 block">Neural Equity</span>
           <h1 className="text-6xl md:text-7xl font-black tracking-tighter leading-none mb-6">
             Investment in <br />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-indigo-500">Intelligence.</span>
           </h1>
           <p className="text-slate-500 text-lg font-medium max-w-2xl mx-auto italic">
-            Prices in USD. Charged in INR at live exchange rates.
+            Transparent pricing designed for the pursuit of a 1600. No hidden fees, just raw cognitive growth.
           </p>
           
           {/* Live Rate Indicator */}
@@ -270,15 +397,21 @@ const Pricing = () => {
       {/* Pricing Cards */}
       <section className="max-w-7xl mx-auto px-6 grid md:grid-cols-3 gap-8">
         {tiers.map((tier, i) => (
-          <motion.div key={i} whileHover={{ y: -10 }} 
-            className={`relative p-10 rounded-[3rem] border ${tier.highlight ? 'border-blue-600 bg-blue-50/30 shadow-2xl shadow-blue-200' : 'border-slate-100 bg-white shadow-xl'} flex flex-col`}>
-            
+          <motion.div
+            key={i}
+            whileHover={{ y: -10 }}
+            className={`relative p-10 rounded-[3rem] border ${
+              tier.highlight 
+                ? 'border-blue-600 bg-blue-50/30 shadow-2xl shadow-blue-200' 
+                : 'border-slate-100 bg-white shadow-xl shadow-slate-200/50'
+            } flex flex-col`}
+          >
             {tier.highlight && (
               <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-blue-600 text-white px-6 py-1 rounded-full text-[10px] font-black uppercase tracking-widest">
                 Most Effective
               </div>
             )}
-
+            
             <div className="mb-8">
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{tier.category}</span>
               <h3 className="text-2xl font-black mb-2">{tier.name}</h3>
@@ -294,7 +427,9 @@ const Pricing = () => {
               )}
             </div>
 
-            <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">{tier.description}</p>
+            <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
+              {tier.description}
+            </p>
 
             <ul className="space-y-4 mb-12 flex-grow">
               {tier.features.map((feature, j) => (
@@ -306,16 +441,27 @@ const Pricing = () => {
             </ul>
 
             {tier.usdPrice === 0 ? (
-              <button className="w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all">
+              <button 
+                onClick={() => selectPlan(tier.id)}
+                className="w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all"
+              >
                 {tier.button}
               </button>
             ) : (
-              <RazorpayButton 
-                tier={tier} 
-                rate={rate}
-                onSuccess={handlePaymentSuccess} 
-                onError={setPaymentError} 
-              />
+              <>
+                <RazorpayButton 
+                  tier={tier}
+                  rate={rate}
+                  onSuccess={handlePaymentSuccess}
+                  onError={handlePaymentError}
+                />
+                <button 
+                  onClick={() => selectPlan(tier.id)}
+                  className="w-full mt-3 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] bg-white border border-slate-200 text-slate-500 hover:border-blue-600 hover:text-blue-600 transition-all"
+                >
+                  Or Enroll via Form
+                </button>
+              </>
             )}
           </motion.div>
         ))}
@@ -339,17 +485,185 @@ const Pricing = () => {
         </div>
       </section>
 
-      {/* Enrollment Form */}
-      <section className="max-w-4xl mx-auto px-6 mt-32">
+      {/* Enrollment Form Section */}
+      <section id="enrollment-form" className="max-w-4xl mx-auto px-6 mt-32">
         <div className="bg-slate-50 p-10 md:p-20 rounded-[4rem] border border-slate-100 shadow-inner">
           <div className="text-center mb-12">
-            <h2 className="text-4xl font-black tracking-tight mb-4">Request Strategic Enrollment</h2>
-            <p className="text-slate-500 font-medium">A Success Specialist will review your data within 24 hours.</p>
+            <h2 className="text-4xl font-black tracking-tight mb-4 text-slate-900">Request Strategic Enrollment</h2>
+            <p className="text-slate-500 font-medium">Complete your neural profile. A Success Specialist will review your data within 24 hours.</p>
+            {formData.preferredPlan && (
+              <div className="mt-4 inline-flex items-center gap-2 bg-blue-100 px-4 py-2 rounded-full">
+                <span className="text-xs font-black text-blue-600 uppercase tracking-widest">
+                  Selected: {tiers.find(t => t.id === formData.preferredPlan)?.name}
+                </span>
+                <button 
+                  onClick={() => setFormData(prev => ({ ...prev, preferredPlan: '' }))}
+                  className="text-blue-400 hover:text-blue-600"
+                >
+                  ✕
+                </button>
+              </div>
+            )}
           </div>
-          {/* ... form content same as before ... */}
+
+          {formStatus === 'success' ? (
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }} 
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-center py-10"
+            >
+              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-white mx-auto mb-6 shadow-xl shadow-green-100">
+                <Check size={40} />
+              </div>
+              <h3 className="text-2xl font-black">Transmission Received.</h3>
+              <p className="text-slate-500 font-bold mt-2">
+                Welcome email sent to <span className="text-blue-600">{formData.email}</span>
+              </p>
+              <p className="text-sm text-slate-400 mt-1">
+                Check your inbox (and WhatsApp) for next steps from your SSM.
+              </p>
+              <button 
+                onClick={() => setFormStatus('idle')}
+                className="mt-6 px-8 py-3 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-xs hover:bg-slate-900 transition-all"
+              >
+                Submit Another
+              </button>
+            </motion.div>
+          ) : (
+            <form 
+              onSubmit={handleFormSubmit}
+              className="grid md:grid-cols-2 gap-6"
+            >
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 flex items-center gap-1">
+                  <User size={12} /> Student Name
+                </label>
+                <input 
+                  required 
+                  type="text" 
+                  name="name"
+                  value={formData.name}
+                  onChange={handleFormChange}
+                  placeholder="e.g. Alex Chen" 
+                  className="w-full p-5 bg-white border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-all font-bold" 
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 flex items-center gap-1">
+                  <Mail size={12} /> Email Contact
+                </label>
+                <input 
+                  required 
+                  type="email" 
+                  name="email"
+                  value={formData.email}
+                  onChange={handleFormChange}
+                  placeholder="student@example.com" 
+                  className="w-full p-5 bg-white border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-all font-bold" 
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 flex items-center gap-1">
+                  <Phone size={12} /> WhatsApp Number
+                </label>
+                <input 
+                  required 
+                  type="tel" 
+                  name="phone"
+                  value={formData.phone}
+                  onChange={handleFormChange}
+                  placeholder="+91 00000 00000" 
+                  className="w-full p-5 bg-white border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-all font-bold" 
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 flex items-center gap-1">
+                  <TrendingUp size={12} /> Target Score
+                </label>
+                <select 
+                  name="targetScore"
+                  value={formData.targetScore}
+                  onChange={handleFormChange}
+                  className="w-full p-5 bg-white border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-all font-bold appearance-none"
+                >
+                  <option>1500 - 1530</option>
+                  <option>1540 - 1570</option>
+                  <option>1580 - 1600</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 flex items-center gap-1">
+                  <BookOpen size={12} /> Current Mock Score
+                </label>
+                <input 
+                  type="text" 
+                  name="currentScore"
+                  value={formData.currentScore}
+                  onChange={handleFormChange}
+                  placeholder="e.g. 1280" 
+                  className="w-full p-5 bg-white border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-all font-bold" 
+                />
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 flex items-center gap-1">
+                  <Zap size={12} /> Preferred Plan
+                </label>
+                <select 
+                  name="preferredPlan"
+                  value={formData.preferredPlan}
+                  onChange={handleFormChange}
+                  className="w-full p-5 bg-white border border-slate-100 rounded-2xl outline-none focus:border-blue-600 transition-all font-bold appearance-none"
+                >
+                  <option value="">Select a plan...</option>
+                  {tiers.map(tier => (
+                    <option key={tier.id} value={tier.id}>{tier.name} - ${tier.usdPrice}</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="md:col-span-2 space-y-2">
+                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-2 flex items-center gap-1">
+                  <Compass size={12} /> Current Mock Score & Pain Points
+                </label>
+                <textarea 
+                  name="painPoints"
+                  value={formData.painPoints}
+                  onChange={handleFormChange}
+                  rows="4" 
+                  placeholder="Briefly describe your current blockers, weak sections, and target timeline..." 
+                  className="w-full p-6 bg-white border border-slate-100 rounded-[2rem] outline-none focus:border-blue-600 transition-all font-bold"
+                ></textarea>
+              </div>
+
+              {formStatus === 'error' && (
+                <div className="md:col-span-2 bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
+                  <AlertCircle size={18} className="text-red-500 shrink-0" />
+                  <p className="text-sm font-bold text-red-600">{formError}</p>
+                </div>
+              )}
+              
+              <button 
+                type="submit"
+                disabled={formStatus === 'submitting'}
+                className="md:col-span-2 w-full py-6 bg-slate-900 text-white rounded-[2rem] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-blue-600 transition-all shadow-xl disabled:opacity-50"
+              >
+                {formStatus === 'submitting' ? (
+                  <><Loader2 size={18} className="animate-spin" /> Transmitting...</>
+                ) : (
+                  <><Send size={18} /> Submit Enrollment Request</>
+                )}
+              </button>
+            </form>
+          )}
         </div>
       </section>
 
+      {/* Contact Footer */}
       <footer className="mt-20 text-center px-6">
         <div className="flex flex-col md:flex-row items-center justify-center gap-8 mb-10">
           <div className="flex items-center gap-2">
@@ -361,6 +675,9 @@ const Pricing = () => {
             <span className="text-sm font-black text-slate-400">+91 7061014213</span>
           </div>
         </div>
+        <p className="text-[10px] text-slate-300 font-black uppercase tracking-[0.3em] italic">
+          SAT® is a registered trademark of the College Board. QuasarPrep is an independent educational laboratory.
+        </p>
       </footer>
     </div>
   );
