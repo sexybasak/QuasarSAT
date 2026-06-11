@@ -18,6 +18,7 @@
     "react-dom": "^18.2.0",
     "katex": "^0.16.8",
     "razorpay": "^2.9.2",
+    "mongodb": "^6.3.0"
     "react-katex": "^3.0.1"
   },
   "devDependencies": {
