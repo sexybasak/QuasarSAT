@@ -6,8 +6,42 @@ import {
   Target, BookOpen, BarChart3, Lightbulb,
   Mic, MicOff, Download, Volume2, VolumeX
 } from 'lucide-react';
-import 'katex/dist/katex.min.css';
-import { InlineMath, BlockMath } from 'react-katex';
+
+// --- MATH RENDERING: Use MathJax for industry-grade LaTeX ---
+const MathJaxLoader = () => {
+  useEffect(() => {
+    if (window.MathJax) return;
+    
+    const script = document.createElement('script');
+    script.src = 'https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-mml-chtml.js';
+    script.async = true;
+    script.id = 'mathjax-script';
+    
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['$$', '$$'], ['\\[', '\\]']],
+        processEscapes: true,
+        processEnvironments: true
+      },
+      options: {
+        skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+      },
+      startup: {
+        pageReady: () => window.MathJax.startup.defaultPageReady()
+      }
+    };
+    
+    document.head.appendChild(script);
+    
+    return () => {
+      const existing = document.getElementById('mathjax-script');
+      if (existing) existing.remove();
+    };
+  }, []);
+  
+  return null;
+};
 
 // --- CONFIGURATION ---
 const AI_CONFIG = {
@@ -29,31 +63,152 @@ const SUGGESTION_CHIPS = [
   { icon: Lightbulb, label: "Socratic Drill", prompt: "Give me a Socratic walkthrough of a hard geometry problem" },
 ];
 
-// --- LATEX PARSER ---
-const renderMathText = (text) => {
-  if (!text || typeof text !== 'string') return text;
-  
-  const parts = text.split(/(\$\$[\s\S]*?\$\$|\$[^\$]*?\$)/g);
-  
-  return parts.map((part, index) => {
-    if (part.startsWith('$$') && part.endsWith('$$')) {
-      const math = part.slice(2, -2).trim();
-      try {
-        return <BlockMath key={index} math={math} />;
-      } catch (e) {
-        return <span key={index} className="text-red-500">{part}</span>;
-      }
+// --- LATEX PARSER WITH MATHJAX ---
+const MathRenderer = ({ text }) => {
+  const containerRef = useRef(null);
+
+  useEffect(() => {
+    if (window.MathJax && containerRef.current) {
+      window.MathJax.typesetPromise([containerRef.current]).catch((err) => {
+        console.error('MathJax typeset failed:', err);
+      });
     }
-    if (part.startsWith('$') && part.endsWith('$')) {
-      const math = part.slice(1, -1).trim();
-      try {
-        return <InlineMath key={index} math={math} />;
-      } catch (e) {
-        return <span key={index} className="text-red-500">{part}</span>;
+  }, [text]);
+
+  // Pre-process text to ensure proper LaTeX delimiters
+  const processedText = text
+    .replace(/\\\(/g, '$')
+    .replace(/\\\)/g, '$')
+    .replace(/\\\[/g, '$$')
+    .replace(/\\\]/g, '$$')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\n/g, '<br/>');
+
+  return (
+    <div 
+      ref={containerRef} 
+      className="math-content text-sm font-medium leading-relaxed"
+      dangerouslySetInnerHTML={{ __html: processedText }}
+    />
+  );
+};
+
+// --- INDUSTRY-GRADE TTS: ResponsiveVoice.js (Free Tier) ---
+const TTSEngine = {
+  isLoaded: false,
+  queue: [],
+  
+  load: () => {
+    if (TTSEngine.isLoaded) return Promise.resolve();
+    
+    return new Promise((resolve, reject) => {
+      if (document.getElementById('responsivevoice-script')) {
+        TTSEngine.isLoaded = true;
+        resolve();
+        return;
       }
+      
+      const script = document.createElement('script');
+      script.id = 'responsivevoice-script';
+      script.src = 'https://code.responsivevoice.org/responsivevoice.js?key=YOUR_FREE_KEY';
+      script.async = true;
+      script.onload = () => {
+        TTSEngine.isLoaded = true;
+        resolve();
+      };
+      script.onerror = reject;
+      document.head.appendChild(script);
+    });
+  },
+  
+  speak: (text, onEnd) => {
+    const cleanText = text
+      .replace(/\$\$[\s\S]*?\$\$/g, ' [equation] ')
+      .replace(/\$[^\$]*?\$/g, ' [math] ')
+      .replace(/<<strong>(.*?)<<\/strong>/g, '$1')
+      .replace(/<<br\/>/g, ' ')
+      .replace(/\n/g, ' ');
+    
+    if (window.responsiveVoice) {
+      window.responsiveVoice.speak(cleanText, 'UK English Male', {
+        rate: 0.95,
+        pitch: 1.05,
+        volume: 1,
+        onend: onEnd || (() => {}),
+        onerror: (e) => console.error('TTS error:', e)
+      });
+      return true;
     }
-    return <span key={index}>{part}</span>;
-  });
+    
+    // Fallback to native TTS with enhanced settings
+    return TTSEngine.fallbackSpeak(cleanText, onEnd);
+  },
+  
+  fallbackSpeak: (text, onEnd) => {
+    if (!window.speechSynthesis) return false;
+    
+    // Cancel any ongoing speech
+    window.speechSynthesis.cancel();
+    
+    const utterance = new SpeechSynthesisUtterance(text);
+    
+    // Try to find a premium voice
+    const voices = window.speechSynthesis.getVoices();
+    const premiumVoices = [
+      'Google UK English Male',
+      'Microsoft David',
+      'Microsoft Mark',
+      'Daniel',
+      'Alex',
+      'Samantha',
+      'Karen'
+    ];
+    
+    const selectedVoice = voices.find(v => 
+      premiumVoices.some(pv => v.name.includes(pv))
+    ) || voices.find(v => v.lang === 'en-US' || v.lang === 'en-GB') || voices[0];
+    
+    if (selectedVoice) utterance.voice = selectedVoice;
+    
+    utterance.rate = 0.92;
+    utterance.pitch = 1.02;
+    utterance.volume = 1;
+    
+    // Split long text to avoid chrome's 15-second limit
+    const chunks = text.match(/.{1,200}(?:\s|$)/g) || [text];
+    let currentChunk = 0;
+    
+    const speakChunk = () => {
+      if (currentChunk >= chunks.length) {
+        onEnd?.();
+        return;
+      }
+      
+      const chunkUtterance = new SpeechSynthesisUtterance(chunks[currentChunk]);
+      if (selectedVoice) chunkUtterance.voice = selectedVoice;
+      chunkUtterance.rate = 0.92;
+      chunkUtterance.pitch = 1.02;
+      chunkUtterance.volume = 1;
+      chunkUtterance.onend = () => {
+        currentChunk++;
+        speakChunk();
+      };
+      
+      window.speechSynthesis.speak(chunkUtterance);
+    };
+    
+    speakChunk();
+    return true;
+  },
+  
+  stop: () => {
+    if (window.responsiveVoice) {
+      window.responsiveVoice.cancel();
+    }
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+  }
 };
 
 // --- OPENROUTER API STREAMING ---
@@ -132,11 +287,11 @@ const streamMockResponse = async (onChunk, onComplete) => {
     "Analyzing your query through the neural network...",
     "This is a classic **Pattern Type 7** — quadratic systems with hidden symmetry.",
     "Let's apply the Socratic method: What do you notice about the coefficients $a$ and $b$ in the system?",
-    "The key insight is recognizing that $x^2 + y^2 = (x+y)^2 - 2xy$.",
+    "The key insight is recognizing that $$x^2 + y^2 = (x+y)^2 - 2xy$$.",
     "This allows us to collapse the system into a single variable substitution.",
-    "Try setting $u = x + y$ and $v = xy$. The equations become: $u^2 - 2v = 25$ and $u + v = 11$.",
-    "From the second: $v = 11 - u$. Substitute: $u^2 - 2(11-u) = 25$ → $u^2 + 2u - 47 = 0$.",
-    "Solving: $u = -1 \\pm \\sqrt{48}$. Since $x,y$ are positive, $u = -1 + 4\\sqrt{3}$.",
+    "Try setting $u = x + y$ and $v = xy$. The equations become: $$u^2 - 2v = 25$$ and $$u + v = 11$$.",
+    "From the second: $v = 11 - u$. Substitute: $$u^2 - 2(11-u) = 25$$ → $$u^2 + 2u - 47 = 0$$.",
+    "Solving: $$u = -1 \\pm \\sqrt{48}$$. Since $x,y$ are positive, $$u = -1 + 4\\sqrt{3}$$.",
     "Therefore, the answer is **A**.",
     "Would you like me to generate a similar problem for practice, or shall we analyze your error pattern from the diagnostic?"
   ];
@@ -167,39 +322,29 @@ const streamAIResponse = async (messages, onChunk, onComplete, onError) => {
   }
 };
 
-// --- VOICE SYNTHESIS (Text-to-Speech) ---
-const speakText = (text, onEnd) => {
-  if (!window.speechSynthesis) return;
-  
-  // Strip LaTeX for cleaner speech
-  const cleanText = text
-    .replace(/\$\$[\s\S]*?\$\$/g, ' [math equation] ')
-    .replace(/\$[^\$]*?\$/g, ' [math] ')
-    .replace(/\*\*/g, '')
-    .replace(/\n/g, ' ');
-  
-  const utterance = new SpeechSynthesisUtterance(cleanText);
-  utterance.rate = 1.1;
-  utterance.pitch = 1;
-  utterance.onEnd = onEnd || (() => {});
-  
-  window.speechSynthesis.speak(utterance);
-  return utterance;
-};
-
 // --- MESSAGE COMPONENT WITH MATH & VOICE ---
-const ChatMessage = ({ message, isStreaming, isLatest, onSpeak }) => {
+const ChatMessage = ({ message, isStreaming, isLatest }) => {
   const isUser = message.role === 'user';
   const [isSpeaking, setIsSpeaking] = useState(false);
 
+  useEffect(() => {
+    TTSEngine.load().catch(() => console.log('Using fallback TTS'));
+  }, []);
+
   const handleSpeak = () => {
     if (isSpeaking) {
-      window.speechSynthesis?.cancel();
+      TTSEngine.stop();
       setIsSpeaking(false);
       return;
     }
+    
     setIsSpeaking(true);
-    speakText(message.content, () => setIsSpeaking(false));
+    const success = TTSEngine.speak(message.content, () => setIsSpeaking(false));
+    
+    if (!success) {
+      setIsSpeaking(false);
+      alert('Text-to-speech not available in this browser');
+    }
   };
 
   return (
@@ -225,7 +370,11 @@ const ChatMessage = ({ message, isStreaming, isLatest, onSpeak }) => {
             : 'bg-white/60 border border-white/50 text-slate-800 rounded-tl-sm'
         }`}>
           <div className="text-sm font-medium leading-relaxed">
-            {renderMathText(message.content)}
+            {isUser ? (
+              <span>{message.content}</span>
+            ) : (
+              <MathRenderer text={message.content} />
+            )}
             {isStreaming && isLatest && (
               <motion.span
                 animate={{ opacity: [0, 1, 0] }}
@@ -286,16 +435,25 @@ const VoiceInputButton = ({ onTranscript, disabled }) => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
     recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.interimResults = true;
     recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
     
     recognition.onstart = () => setIsListening(true);
     recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
+    recognition.onerror = (event) => {
+      console.error('Speech recognition error:', event.error);
+      setIsListening(false);
+    };
     
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript;
-      onTranscript(transcript);
+      const confidence = event.results[0][0].confidence;
+      
+      // Only accept if confidence is reasonable
+      if (confidence > 0.6 || event.results[0].isFinal) {
+        onTranscript(transcript);
+      }
     };
     
     recognitionRef.current = recognition;
@@ -310,7 +468,12 @@ const VoiceInputButton = ({ onTranscript, disabled }) => {
     if (isListening) {
       recognitionRef.current.stop();
     } else {
-      recognitionRef.current.start();
+      // Request permission and start
+      try {
+        recognitionRef.current.start();
+      } catch (err) {
+        console.error('Failed to start recognition:', err);
+      }
     }
   };
 
@@ -356,6 +519,11 @@ export default function NeuralChatbot() {
   useEffect(() => {
     const key = import.meta.env.VITE_OPENROUTER_API_KEY;
     setHasApiKey(key && key.length > 10);
+  }, []);
+
+  // Load TTS engine on mount
+  useEffect(() => {
+    TTSEngine.load().catch(() => console.log('ResponsiveVoice not loaded, using fallback'));
   }, []);
 
   const scrollToBottom = useCallback(() => {
@@ -453,6 +621,8 @@ export default function NeuralChatbot() {
 
   return (
     <>
+      <MathJaxLoader />
+      
       <AnimatePresence>
         {!isOpen && (
           <motion.button
