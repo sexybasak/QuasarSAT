@@ -10,7 +10,10 @@ import {
   Target, 
   ShieldCheck, 
   Users, 
-  Compass 
+  Compass,
+  Loader2,
+  Lock,
+  CreditCard
 } from 'lucide-react';
 
 // --- WHATSAPP FLOATING WIDGET (Bottom Left) ---
@@ -30,21 +33,173 @@ const WhatsAppWidget = () => (
       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
       <span className="relative inline-flex rounded-full h-4 w-4 bg-white"></span>
     </span>
-    {/* Tooltip */}
     <span className="absolute left-16 bg-slate-900 text-white text-[10px] px-3 py-1 rounded-md opacity-0 group-hover:opacity-100 transition-opacity font-black uppercase tracking-widest whitespace-nowrap pointer-events-none">
       WhatsApp Support
     </span>
   </motion.a>
 );
 
+// --- RAZORPAY PAYMENT COMPONENT ---
+const RazorpayButton = ({ tier, onSuccess, onError }) => {
+  const [loading, setLoading] = useState(false);
+
+  const loadRazorpayScript = () => {
+    return new Promise((resolve) => {
+      if (window.Razorpay) {
+        resolve(true);
+        return;
+      }
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePayment = async () => {
+    setLoading(true);
+    
+    const scriptLoaded = await loadRazorpayScript();
+    if (!scriptLoaded) {
+      onError('Failed to load Razorpay. Please check your internet connection.');
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // Step 1: Create order on backend
+      const orderResponse = await fetch('/api/create-razorpay-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount: parseInt(tier.price) * 100, // Razorpay expects paise (INR)
+          currency: 'INR',
+          receipt: `receipt_${tier.id}_${Date.now()}`,
+          notes: {
+            planName: tier.name,
+            planId: tier.id,
+            studentEmail: tier.studentEmail || ''
+          }
+        })
+      });
+
+      if (!orderResponse.ok) throw new Error('Failed to create order');
+
+      const orderData = await orderResponse.json();
+
+      // Step 2: Initialize Razorpay checkout
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: 'QuasarPrep',
+        description: `${tier.name} - SAT Preparation`,
+        image: 'https://quasarprep.online/logo.png', // Your logo URL
+        order_id: orderData.id,
+        handler: function (response) {
+          // Payment successful
+          verifyPayment(response, tier);
+        },
+        prefill: {
+          name: tier.studentName || '',
+          email: tier.studentEmail || '',
+          contact: tier.studentPhone || ''
+        },
+        notes: {
+          planId: tier.id,
+          planName: tier.name
+        },
+        theme: {
+          color: '#2563eb' // Matches your blue theme
+        },
+        modal: {
+          ondismiss: function() {
+            setLoading(false);
+          }
+        }
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+      
+    } catch (error) {
+      onError(error.message);
+      setLoading(false);
+    }
+  };
+
+  const verifyPayment = async (paymentResponse, tier) => {
+    try {
+      const verifyResponse = await fetch('/api/verify-razorpay-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpay_payment_id: paymentResponse.razorpay_payment_id,
+          razorpay_order_id: paymentResponse.razorpay_order_id,
+          razorpay_signature: paymentResponse.razorpay_signature,
+          planId: tier.id,
+          planName: tier.name
+        })
+      });
+
+      const verifyData = await verifyResponse.json();
+      
+      if (verifyData.verified) {
+        onSuccess({
+          paymentId: paymentResponse.razorpay_payment_id,
+          orderId: paymentResponse.razorpay_order_id,
+          plan: tier
+        });
+      } else {
+        onError('Payment verification failed. Please contact support.');
+      }
+    } catch (error) {
+      onError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <motion.button
+      whileHover={{ scale: 1.03 }}
+      whileTap={{ scale: 0.97 }}
+      onClick={handlePayment}
+      disabled={loading}
+      className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all flex items-center justify-center gap-2 ${
+        tier.highlight 
+          ? 'bg-blue-600 text-white hover:bg-slate-900 shadow-xl shadow-blue-200' 
+          : 'bg-slate-900 text-white hover:bg-blue-600'
+      } disabled:opacity-50 disabled:cursor-not-allowed`}
+    >
+      {loading ? (
+        <>
+          <Loader2 size={16} className="animate-spin" />
+          Initializing...
+        </>
+      ) : (
+        <>
+          <Lock size={14} />
+          {tier.button}
+        </>
+      )}
+    </motion.button>
+  );
+};
+
 const Pricing = () => {
   const [formStatus, setFormStatus] = useState('idle');
+  const [paymentSuccess, setPaymentSuccess] = useState(null);
+  const [paymentError, setPaymentError] = useState(null);
 
   const tiers = [
     {
+      id: 'neural-baseline',
       name: "Neural Baseline",
       category: "Freemium",
       price: "0",
+      priceInr: "0",
       description: "Ideal for self-driven scholars starting their 1500+ journey.",
       features: [
         "Full Socratic Engine Access",
@@ -56,9 +211,11 @@ const Pricing = () => {
       highlight: false
     },
     {
+      id: 'success-specialist',
       name: "Success Specialist",
       category: "Pro Tier",
       price: "50",
+      priceInr: "4200", // ~$50 in INR
       description: "Advanced AI integration for targeted section mastery.",
       features: [
         "Everything in Freemium",
@@ -71,9 +228,11 @@ const Pricing = () => {
       highlight: true
     },
     {
+      id: 'quasar-executive',
       name: "Quasar Executive",
       category: "Elite Tier",
       price: "150",
+      priceInr: "12500", // ~$150 in INR
       description: "The gold standard for Ivy League admissions preparation.",
       features: [
         "Everything in Specialist",
@@ -87,9 +246,82 @@ const Pricing = () => {
     }
   ];
 
+  const handlePaymentSuccess = (data) => {
+    setPaymentSuccess(data);
+    setFormStatus('success');
+    
+    // Optional: Send to your backend for enrollment
+    fetch('/api/enroll-student', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        paymentId: data.paymentId,
+        orderId: data.orderId,
+        planId: data.plan.id,
+        planName: data.plan.name
+      })
+    }).catch(console.error);
+  };
+
+  const handlePaymentError = (error) => {
+    setPaymentError(error);
+    setTimeout(() => setPaymentError(null), 5000);
+  };
+
   return (
     <div className="relative min-h-screen bg-white text-slate-900 font-sans selection:bg-blue-100 pb-20">
       <WhatsAppWidget />
+
+      {/* Payment Success Modal */}
+      <AnimatePresence>
+        {paymentSuccess && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] bg-black/50 backdrop-blur-sm flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 50 }}
+              animate={{ scale: 1, y: 0 }}
+              className="bg-white rounded-[3rem] p-12 max-w-md w-full text-center shadow-2xl"
+            >
+              <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center text-white mx-auto mb-6 shadow-xl">
+                <Check size={40} />
+              </div>
+              <h3 className="text-3xl font-black tracking-tight mb-2">Neural Link Activated.</h3>
+              <p className="text-slate-500 font-medium mb-6">
+                Payment successful. Welcome to {paymentSuccess.plan.name}.
+              </p>
+              <div className="bg-slate-50 rounded-2xl p-4 mb-6 text-left">
+                <p className="text-xs font-black uppercase tracking-widest text-slate-400 mb-1">Payment ID</p>
+                <p className="text-sm font-mono text-slate-700 break-all">{paymentSuccess.paymentId}</p>
+              </div>
+              <button 
+                onClick={() => setPaymentSuccess(null)}
+                className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-900 transition-all"
+              >
+                Enter Neural Lab
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Payment Error Toast */}
+      <AnimatePresence>
+        {paymentError && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="fixed top-8 left-1/2 -translate-x-1/2 z-[1000] bg-red-500 text-white px-8 py-4 rounded-2xl shadow-2xl flex items-center gap-3"
+          >
+            <span className="text-sm font-black">{paymentError}</span>
+            <button onClick={() => setPaymentError(null)} className="text-white/80 hover:text-white">✕</button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Header Section */}
       <section className="pt-32 pb-20 px-6 text-center">
@@ -131,9 +363,12 @@ const Pricing = () => {
               <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{tier.category}</span>
               <h3 className="text-2xl font-black mb-2">{tier.name}</h3>
               <div className="flex items-baseline gap-1 mt-4">
-                <span className="text-5xl font-black">${tier.price}</span>
+                <span className="text-5xl font-black">₹{tier.priceInr}</span>
                 <span className="text-slate-400 text-sm font-bold">/mo</span>
               </div>
+              {parseInt(tier.price) > 0 && (
+                <p className="text-xs text-slate-400 font-medium mt-1">~${tier.price} USD</p>
+              )}
             </div>
 
             <p className="text-slate-500 text-sm font-medium mb-8 leading-relaxed">
@@ -149,15 +384,37 @@ const Pricing = () => {
               ))}
             </ul>
 
-            <button className={`w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs transition-all ${
-              tier.highlight 
-                ? 'bg-blue-600 text-white hover:bg-slate-900 shadow-xl shadow-blue-200' 
-                : 'bg-slate-900 text-white hover:bg-blue-600'
-            }`}>
-              {tier.button}
-            </button>
+            {parseInt(tier.price) === 0 ? (
+              <button className="w-full py-5 rounded-2xl font-black uppercase tracking-widest text-xs bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all">
+                {tier.button}
+              </button>
+            ) : (
+              <RazorpayButton 
+                tier={tier}
+                onSuccess={handlePaymentSuccess}
+                onError={handlePaymentError}
+              />
+            )}
           </motion.div>
         ))}
+      </section>
+
+      {/* Trust Badges */}
+      <section className="max-w-4xl mx-auto px-6 mt-16">
+        <div className="flex flex-wrap items-center justify-center gap-8">
+          <div className="flex items-center gap-2 text-slate-400">
+            <ShieldCheck size={20} className="text-green-500" />
+            <span className="text-xs font-black uppercase tracking-widest">Razorpay Secure</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-400">
+            <CreditCard size={20} className="text-blue-500" />
+            <span className="text-xs font-black uppercase tracking-widest">UPI • Cards • NetBanking</span>
+          </div>
+          <div className="flex items-center gap-2 text-slate-400">
+            <Lock size={20} className="text-slate-500" />
+            <span className="text-xs font-black uppercase tracking-widest">256-bit SSL</span>
+          </div>
+        </div>
       </section>
 
       {/* Enrollment Form Section */}
