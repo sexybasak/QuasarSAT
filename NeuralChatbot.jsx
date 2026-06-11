@@ -15,7 +15,7 @@ const AI_CONFIG = {
   maxTokens: 2048,
   temperature: 0.7,
   topP: 0.95,
-  model: "meta-llama/llama-3.1-8b-instruct:free"
+  model: "meta-llama/llama-3.1-70b-instruct"  // ← Updated free model
 };
 
 // --- SUGGESTION CHIPS ---
